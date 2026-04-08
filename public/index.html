@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Among Us IRL - Multiplayer</title>
+<style>
+body { font-family: Arial; background: #111; color: #fff; text-align: center; margin:0; padding:0;}
+.screen { display: none; min-height: 100vh; justify-content: center; align-items: flex-start; flex-direction: column; padding: 50px; }
+.screen.active { display: flex; }
+.box { background: #222; padding: 20px; border-radius: 15px; margin: 10px auto; min-width: 300px; position: relative; }
+h2 { margin-bottom: 20px; }
+#taskContainer, #selectedTasks { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; min-height: 150px; padding: 10px; border: 2px dashed #555; border-radius: 10px; margin-bottom: 20px; }
+.taskBox { background: #28a745; padding: 10px 15px; border-radius: 8px; cursor: grab; user-select: none; }
+.taskBox.dragging { opacity: 0.5; }
+button { padding: 12px 20px; font-size: 16px; border-radius: 6px; border: none; background-color: #28a745; color: white; cursor: pointer; }
+button:hover { background-color: #218838; }
+.backBtn { position: absolute; top: 20px; left: 20px; background: transparent; color: #fff; font-size: 24px; border: none; cursor: pointer; }
+p { margin: 10px 0; }
+</style>
+</head>
+<body>
+
+<div id="screenWelcome" class="screen active">
+  <div class="box">
+    <h2>Welcome!</h2>
+    <input type="text" id="username" placeholder="Enter your username"><br><br>
+    <button onclick="chooseMode('create')">Create Game</button>
+    <button onclick="chooseMode('join')">Join Game</button>
+  </div>
+</div>
+
+<div id="screenCreate" class="screen">
+  <div class="box">
+    <button class="backBtn" onclick="showScreen('screenWelcome')">&#8592;</button>
+    <h2>Create Game</h2>
+    Max Players: <input type="number" id="maxPlayers" min="1" max="25"><br><br>
+
+    <h3>Available Tasks</h3>
+    <div id="taskContainer"></div>
+
+    <h3>Tasks to Play</h3>
+    <div id="selectedTasks"></div>
+
+    <button onclick="startGame()">Start Game</button>
+    <p id="gameCodeDisplay"></p>
+  </div>
+</div>
+
+<div id="screenJoin" class="screen">
+  <div class="box">
+    <button class="backBtn" onclick="showScreen('screenWelcome')">&#8592;</button>
+    <h2>Join Game</h2>
+    Enter Game Code: <input type="text" id="joinCode"><br><br>
+    <button onclick="joinGame()">Join</button>
+    <p id="joinMessage"></p>
+  </div>
+</div>
+
+<div id="screenLobby" class="screen">
+  <div class="box">
+    <h2>Game Lobby</h2>
+    <p id="lobbyInfo"></p>
+    <p>Players: <span id="playerList"></span></p>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+// --- Your Specific Firebase config ---
+const firebaseConfig = {
+  apiKey: "AIzaSyD-rRsg7FxuddLe4moASb-cL6qHNwux0b8",
+  authDomain: "among-us-irl-aec6e.firebaseapp.com",
+  databaseURL: "https://among-us-irl-aec6e-default-rtdb.firebaseio.com",
+  projectId: "among-us-irl-aec6e",
+  storageBucket: "among-us-irl-aec6e.firebasestorage.app",
+  messagingSenderId: "65551016275",
+  appId: "1:65551016275:web:11c0db681243941a1f01a6"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// --- Global ---
+let currentGameCode = null;
+let username = null;
+
+// --- Screens ---
+function showScreen(screenId){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+}
+
+// --- Welcome ---
+function chooseMode(mode){
+  username = document.getElementById('username').value.trim();
+  if(!username){ alert("Enter your username!"); return; }
+
+  if(mode==='create'){ 
+    showScreen('screenCreate'); 
+    generateTaskBoxes(); 
+  } else { showScreen('screenJoin'); }
+}
+
+// --- Tasks ---
+function generateTaskBoxes(){
+  const taskContainer = document.getElementById('taskContainer');
+  const selectedTasks = document.getElementById('selectedTasks');
+  taskContainer.innerHTML=''; selectedTasks.innerHTML='';
+  for(let i=1;i<=25;i++){
+    const t = document.createElement('div'); t.className='taskBox'; t.innerText=i; t.draggable=true;
+    t.addEventListener('dragstart', e=>{ t.classList.add('dragging'); e.dataTransfer.setData('text/plain', t.innerText); });
+    t.addEventListener('dragend', e=>t.classList.remove('dragging'));
+    taskContainer.appendChild(t);
+  }
+  selectedTasks.addEventListener('dragover', e=>e.preventDefault());
+  selectedTasks.addEventListener('drop', e=>{
+    e.preventDefault();
+    const num = e.dataTransfer.getData('text/plain');
+    if(![...selectedTasks.children].some(c=>c.innerText===num)){
+      const b=document.createElement('div'); b.className='taskBox'; b.innerText=num; selectedTasks.appendChild(b);
+    }
+  });
+}
+
+// --- Start Game ---
+function startGame(){
+  const maxPlayers=parseInt(document.getElementById('maxPlayers').value);
+  if(!maxPlayers||maxPlayers<1){ alert("Enter valid max players"); return; }
+  const tasks=[...document.getElementById('selectedTasks').children].map(t=>t.innerText);
+  if(tasks.length===0){ alert("Select at least 1 task!"); return; }
+
+  currentGameCode=Math.floor(100000+Math.random()*900000).toString();
+  db.ref('games/'+currentGameCode).set({
+    creator: username,
+    maxPlayers: maxPlayers,
+    tasks: tasks,
+    players: {[username]: true}
+  });
+
+  document.getElementById('gameCodeDisplay').innerText = `Game Code: ${currentGameCode}\nShare this code!`;
+  listenLobby(currentGameCode);
+  showScreen('screenLobby');
+}
+
+// --- Join Game ---
+function joinGame(){
+  const code=document.getElementById('joinCode').value.trim();
+  if(!code){ alert("Enter a code!"); return; }
+
+  db.ref('games/'+code).get().then(snapshot=>{
+    if(!snapshot.exists()){ document.getElementById('joinMessage').innerText="Game not found"; return; }
+    const game=snapshot.val();
+    if(Object.keys(game.players).length>=game.maxPlayers){ document.getElementById('joinMessage').innerText="Game full"; return; }
+    db.ref('games/'+code+'/players/'+username).set(true);
+    currentGameCode=code;
+    listenLobby(code);
+    showScreen('screenLobby');
+  });
+}
+
+// --- Lobby ---
+function listenLobby(code){
+  db.ref('games/'+code).on('value', snapshot=>{
+    const game=snapshot.val();
+    if(!game) return;
+    document.getElementById('lobbyInfo').innerText = `Code: ${code}, Max: ${game.maxPlayers}, Tasks: ${game.tasks.join(', ')}`;
+    document.getElementById('playerList').innerText = Object.keys(game.players).join(', ');
+  });
+}
+</script>
+</body>
+</html>
