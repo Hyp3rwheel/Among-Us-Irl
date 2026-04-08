@@ -11,11 +11,10 @@ body { font-family: Arial; background: #111; color: #fff; text-align: center; ma
 .box { background: #222; padding: 20px; border-radius: 15px; margin: 10px auto; min-width: 300px; position: relative; }
 h2 { margin-bottom: 20px; }
 #taskContainer, #selectedTasks { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; min-height: 150px; padding: 10px; border: 2px dashed #555; border-radius: 10px; margin-bottom: 20px; }
-.taskBox { background: #28a745; padding: 10px 15px; border-radius: 8px; cursor: grab; user-select: none; }
-.taskBox.dragging { opacity: 0.5; }
+.taskBox { background: #28a745; padding: 10px 15px; border-radius: 8px; cursor: pointer; user-select: none; }
+.taskBox.selected { background: #218838; }
 button { padding: 12px 20px; font-size: 16px; border-radius: 6px; border: none; background-color: #28a745; color: white; cursor: pointer; }
 button:hover { background-color: #218838; }
-.backBtn { position: absolute; top: 20px; left: 20px; background: transparent; color: #fff; font-size: 24px; border: none; cursor: pointer; }
 p { margin: 10px 0; }
 </style>
 </head>
@@ -32,24 +31,22 @@ p { margin: 10px 0; }
 
 <div id="screenCreate" class="screen">
   <div class="box">
-    <button class="backBtn" onclick="showScreen('screenWelcome')">&#8592;</button>
     <h2>Create Game</h2>
-    Max Players: <input type="number" id="maxPlayers" min="1" max="25"><br><br>
+    Players: <input type="number" id="maxPlayers" min="1" max="25"><br><br>
 
-    <h3>Available Tasks</h3>
+    <h3>Available Tasks (click to select)</h3>
     <div id="taskContainer"></div>
 
-    <h3>Tasks to Play</h3>
+    <h3>Your Selected Tasks</h3>
     <div id="selectedTasks"></div>
 
-    <button onclick="startGame()">Start Game</button>
+    <button onclick="startGame()">Create Game</button>
     <p id="gameCodeDisplay"></p>
   </div>
 </div>
 
 <div id="screenJoin" class="screen">
   <div class="box">
-    <button class="backBtn" onclick="showScreen('screenWelcome')">&#8592;</button>
     <h2>Join Game</h2>
     Enter Game Code: <input type="text" id="joinCode"><br><br>
     <button onclick="joinGame()">Join</button>
@@ -59,9 +56,16 @@ p { margin: 10px 0; }
 
 <div id="screenLobby" class="screen">
   <div class="box">
-    <h2>Game Lobby</h2>
+    <h2>Lobby</h2>
     <p id="lobbyInfo"></p>
     <p>Players: <span id="playerList"></span></p>
+  </div>
+</div>
+
+<div id="screenTasks" class="screen">
+  <div class="box">
+    <h2>Tasks Assigned</h2>
+    <div id="assignedTasks"></div>
   </div>
 </div>
 
@@ -69,7 +73,6 @@ p { margin: 10px 0; }
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-// --- Your Specific Firebase config ---
 const firebaseConfig = {
   apiKey: "AIzaSyD-rRsg7FxuddLe4moASb-cL6qHNwux0b8",
   authDomain: "among-us-irl-aec6e.firebaseapp.com",
@@ -79,84 +82,80 @@ const firebaseConfig = {
   messagingSenderId: "65551016275",
   appId: "1:65551016275:web:11c0db681243941a1f01a6"
 };
-
-// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// --- Global ---
-let currentGameCode = null;
 let username = null;
+let currentGameCode = null;
 
 // --- Screens ---
-function showScreen(screenId){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.getElementById(screenId).classList.add('active');
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
 }
 
 // --- Welcome ---
 function chooseMode(mode){
   username = document.getElementById('username').value.trim();
-  if(!username){ alert("Enter your username!"); return; }
-
+  if(!username){ alert("Enter username!"); return; }
   if(mode==='create'){ 
-    showScreen('screenCreate'); 
-    generateTaskBoxes(); 
+    showScreen('screenCreate');
+    generateTaskBoxes();
   } else { showScreen('screenJoin'); }
 }
 
-// --- Tasks ---
+// --- Click Tasks ---
 function generateTaskBoxes(){
-  const taskContainer = document.getElementById('taskContainer');
-  const selectedTasks = document.getElementById('selectedTasks');
-  taskContainer.innerHTML=''; selectedTasks.innerHTML='';
+  const container = document.getElementById('taskContainer');
+  const selected = document.getElementById('selectedTasks');
+  container.innerHTML=''; selected.innerHTML='';
   for(let i=1;i<=25;i++){
-    const t = document.createElement('div'); t.className='taskBox'; t.innerText=i; t.draggable=true;
-    t.addEventListener('dragstart', e=>{ t.classList.add('dragging'); e.dataTransfer.setData('text/plain', t.innerText); });
-    t.addEventListener('dragend', e=>t.classList.remove('dragging'));
-    taskContainer.appendChild(t);
+    const t = document.createElement('div');
+    t.className='taskBox';
+    t.innerText=i;
+    t.onclick = ()=>{
+      if(t.classList.contains('selected')){
+        t.classList.remove('selected');
+        selected.querySelector(`div[data-task="${i}"]`)?.remove();
+      } else {
+        t.classList.add('selected');
+        const b = document.createElement('div');
+        b.innerText=i;
+        b.dataset.task=i;
+        selected.appendChild(b);
+      }
+    };
+    container.appendChild(t);
   }
-  selectedTasks.addEventListener('dragover', e=>e.preventDefault());
-  selectedTasks.addEventListener('drop', e=>{
-    e.preventDefault();
-    const num = e.dataTransfer.getData('text/plain');
-    if(![...selectedTasks.children].some(c=>c.innerText===num)){
-      const b=document.createElement('div'); b.className='taskBox'; b.innerText=num; selectedTasks.appendChild(b);
-    }
-  });
 }
 
 // --- Start Game ---
 function startGame(){
-  const maxPlayers=parseInt(document.getElementById('maxPlayers').value);
-  if(!maxPlayers||maxPlayers<1){ alert("Enter valid max players"); return; }
-  const tasks=[...document.getElementById('selectedTasks').children].map(t=>t.innerText);
-  if(tasks.length===0){ alert("Select at least 1 task!"); return; }
+  const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
+  const tasks = [...document.getElementById('selectedTasks').children].map(t=>t.innerText);
+  if(!maxPlayers || tasks.length===0){ alert("Enter players and select tasks!"); return; }
 
-  currentGameCode=Math.floor(100000+Math.random()*900000).toString();
+  currentGameCode = Math.floor(100000 + Math.random()*900000).toString();
   db.ref('games/'+currentGameCode).set({
     creator: username,
-    maxPlayers: maxPlayers,
-    tasks: tasks,
+    maxPlayers,
+    tasks,
     players: {[username]: true}
   });
 
-  document.getElementById('gameCodeDisplay').innerText = `Game Code: ${currentGameCode}\nShare this code!`;
+  document.getElementById('gameCodeDisplay').innerText = `Game Code: ${currentGameCode}`;
   listenLobby(currentGameCode);
   showScreen('screenLobby');
 }
 
 // --- Join Game ---
 function joinGame(){
-  const code=document.getElementById('joinCode').value.trim();
-  if(!code){ alert("Enter a code!"); return; }
-
-  db.ref('games/'+code).get().then(snapshot=>{
-    if(!snapshot.exists()){ document.getElementById('joinMessage').innerText="Game not found"; return; }
-    const game=snapshot.val();
-    if(Object.keys(game.players).length>=game.maxPlayers){ document.getElementById('joinMessage').innerText="Game full"; return; }
-    db.ref('games/'+code+'/players/'+username).set(true);
-    currentGameCode=code;
+  const code = document.getElementById('joinCode').value.trim();
+  if(!code){ alert("Enter code!"); return; }
+  db.ref('games/'+code).get().then(s=>{
+    if(!s.exists()){ document.getElementById('joinMessage').innerText="Game not found"; return; }
+    currentGameCode = code;
+    db.ref(`games/${code}/players/${username}`).set(true);
     listenLobby(code);
     showScreen('screenLobby');
   });
@@ -165,11 +164,45 @@ function joinGame(){
 // --- Lobby ---
 function listenLobby(code){
   db.ref('games/'+code).on('value', snapshot=>{
-    const game=snapshot.val();
+    const game = snapshot.val();
     if(!game) return;
-    document.getElementById('lobbyInfo').innerText = `Code: ${code}, Max: ${game.maxPlayers}, Tasks: ${game.tasks.join(', ')}`;
+    document.getElementById('lobbyInfo').innerText = `Code: ${code}, Tasks: ${game.tasks.join(', ')}`;
     document.getElementById('playerList').innerText = Object.keys(game.players).join(', ');
+
+    // If player count reached, assign tasks evenly
+    if(Object.keys(game.players).length === game.maxPlayers){
+      assignTasks(game);
+    }
   });
+}
+
+// --- Assign tasks evenly ---
+function assignTasks(game){
+  const players = Object.keys(game.players);
+  const tasks = [...game.tasks];
+  const assignments = {};
+
+  // Shuffle tasks
+  tasks.sort(()=>Math.random()-0.5);
+
+  // Distribute tasks as evenly as possible
+  let i=0;
+  players.forEach(p=>{
+    assignments[p] = [];
+  });
+  tasks.forEach((task, index)=>{
+    const player = players[index % players.length];
+    assignments[player].push(task);
+  });
+
+  // Write to Firebase
+  db.ref(`games/${currentGameCode}/assignments`).set(assignments);
+
+  // If current user, show assigned tasks
+  const myTasks = assignments[username] || [];
+  const container = document.getElementById('assignedTasks');
+  container.innerHTML = myTasks.map(t=>`<div class="taskBox">${t}</div>`).join('');
+  showScreen('screenTasks');
 }
 </script>
 </body>
