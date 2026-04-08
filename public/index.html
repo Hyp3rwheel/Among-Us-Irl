@@ -10,12 +10,13 @@ body { font-family: Arial; background: #111; color: #fff; text-align: center; ma
 .screen.active { display: flex; }
 .box { background: #222; padding: 20px; border-radius: 15px; margin: 10px auto; min-width: 300px; position: relative; }
 h2 { margin-bottom: 20px; }
-#taskContainer, #selectedTasks { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; min-height: 150px; padding: 10px; border: 2px dashed #555; border-radius: 10px; margin-bottom: 20px; }
-.taskBox { background: #28a745; padding: 10px 15px; border-radius: 8px; cursor: pointer; user-select: none; }
-.taskBox.selected { background: #218838; }
+#taskContainer, #selectedTasks, #assignedTasks { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; min-height: 150px; padding: 10px; border: 2px dashed #555; border-radius: 10px; margin-bottom: 20px; }
+.taskBox { background: #28a745; padding: 10px 15px; border-radius: 8px; cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; min-width: 60px; }
+.taskBox.selected { background: #28a745; }
 button { padding: 12px 20px; font-size: 16px; border-radius: 6px; border: none; background-color: #28a745; color: white; cursor: pointer; }
 button:hover { background-color: #218838; }
 p { margin: 10px 0; }
+.checkbox { margin-left: 5px; }
 </style>
 </head>
 <body>
@@ -64,8 +65,15 @@ p { margin: 10px 0; }
 
 <div id="screenTasks" class="screen">
   <div class="box">
-    <h2>Tasks Assigned</h2>
+    <h2>Your Role: <span id="roleDisplay">...</span></h2>
+    <h3>Tasks</h3>
     <div id="assignedTasks"></div>
+  </div>
+</div>
+
+<div id="screenComplete" class="screen">
+  <div class="box">
+    <h2>You have completed all your tasks, nice job!</h2>
   </div>
 </div>
 
@@ -122,6 +130,7 @@ function generateTaskBoxes(){
         const b = document.createElement('div');
         b.innerText=i;
         b.dataset.task=i;
+        b.classList.add('selected');
         selected.appendChild(b);
       }
     };
@@ -152,13 +161,10 @@ function startGame(){
 function joinGame(){
   const code = document.getElementById('joinCode').value.trim();
   if(!code){ alert("Enter code!"); return; }
-  db.ref('games/'+code).get().then(s=>{
-    if(!s.exists()){ document.getElementById('joinMessage').innerText="Game not found"; return; }
-    currentGameCode = code;
-    db.ref(`games/${code}/players/${username}`).set(true);
-    listenLobby(code);
-    showScreen('screenLobby');
-  });
+  currentGameCode = code;
+  db.ref(`games/${code}/players/${username}`).set(true);
+  listenLobby(code);
+  showScreen('screenLobby');
 }
 
 // --- Lobby ---
@@ -169,39 +175,50 @@ function listenLobby(code){
     document.getElementById('lobbyInfo').innerText = `Code: ${code}, Tasks: ${game.tasks.join(', ')}`;
     document.getElementById('playerList').innerText = Object.keys(game.players).join(', ');
 
-    // If player count reached, assign tasks evenly
     if(Object.keys(game.players).length === game.maxPlayers){
-      assignTasks(game);
+      assignTasksAndRole(game);
     }
   });
 }
 
-// --- Assign tasks evenly ---
-function assignTasks(game){
+// --- Assign tasks evenly and roles ---
+function assignTasksAndRole(game){
   const players = Object.keys(game.players);
   const tasks = [...game.tasks];
+  tasks.sort(()=>Math.random()-0.5); // shuffle
   const assignments = {};
-
-  // Shuffle tasks
-  tasks.sort(()=>Math.random()-0.5);
-
-  // Distribute tasks as evenly as possible
-  let i=0;
-  players.forEach(p=>{
-    assignments[p] = [];
-  });
-  tasks.forEach((task, index)=>{
+  players.forEach(p=>assignments[p]=[]);
+  tasks.forEach((task,index)=>{
     const player = players[index % players.length];
     assignments[player].push(task);
   });
-
-  // Write to Firebase
   db.ref(`games/${currentGameCode}/assignments`).set(assignments);
 
-  // If current user, show assigned tasks
+  // Assign roles (1 imposter)
+  const imposterIndex = Math.floor(Math.random()*players.length);
+  const roles = {};
+  players.forEach((p,i)=> roles[p] = i===imposterIndex ? 'Imposter' : 'Crewmate');
+  db.ref(`games/${currentGameCode}/roles`).set(roles);
+
+  // Display to this user
   const myTasks = assignments[username] || [];
+  const myRole = roles[username];
+  document.getElementById('roleDisplay').innerText = myRole;
+
   const container = document.getElementById('assignedTasks');
-  container.innerHTML = myTasks.map(t=>`<div class="taskBox">${t}</div>`).join('');
+  container.innerHTML='';
+  myTasks.forEach(task=>{
+    const div = document.createElement('div');
+    div.className='taskBox selected';
+    div.innerHTML = `<span>${task}</span> <input type="checkbox" class="checkbox">`;
+    div.querySelector('input').addEventListener('change',()=>{
+      if([...container.querySelectorAll('input')].every(c=>c.checked)){
+        showScreen('screenComplete');
+      }
+    });
+    container.appendChild(div);
+  });
+
   showScreen('screenTasks');
 }
 </script>
