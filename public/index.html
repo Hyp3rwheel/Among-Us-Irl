@@ -9,28 +9,31 @@
         .screen { display: none; min-height: 100vh; justify-content: center; align-items: center; flex-direction: column; padding: 20px; box-sizing: border-box; }
         .screen.active { display: flex; }
         .box { background: #222; padding: 25px; border-radius: 15px; width: 100%; max-width: 350px; position: relative; border: 1px solid #444; box-shadow: 0 10px 30px rgba(0,0,0,0.5); box-sizing: border-box; }
+        
+        /* Logo Styling */
+        .game-logo { width: 120px; margin-bottom: 15px; }
+
         h2 { margin-top: 0; color: #28a745; text-transform: uppercase; letter-spacing: 2px; }
         h3 { font-size: 1rem; color: #aaa; margin-bottom: 10px; }
         
-        /* Info Icon Styles */
-        .info-btn { 
+        /* Corner Info Button */
+        .info-corner-btn { 
             position: absolute; 
             top: 15px; 
             right: 15px; 
-            width: 30px; 
-            height: 30px; 
+            background: #333; 
+            border: 1px solid #28a745; 
+            color: #28a745; 
+            padding: 5px 10px; 
+            border-radius: 8px; 
+            font-size: 12px; 
+            font-weight: bold; 
             cursor: pointer; 
             z-index: 100;
         }
-        .info-btn img { 
-            width: 100%; 
-            height: 100%; 
-            /* This filter makes the black icon look green to match your theme */
-            filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%);
-        }
 
         /* Modal Styles */
-        #infoModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10000; padding: 20px; box-sizing: border-box; overflow-y: auto; text-align: left; }
+        #infoModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10000; padding: 20px; box-sizing: border-box; overflow-y: auto; text-align: left; }
         .modal-content { max-width: 400px; margin: 0 auto; background: #222; padding: 20px; border-radius: 15px; border: 1px solid #444; }
         .task-info-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 5px; }
         .task-info-title { color: #28a745; font-weight: bold; display: block; }
@@ -38,22 +41,17 @@
 
         #taskContainer { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; border: 2px dashed #555; border-radius: 10px; margin-bottom: 20px; background: #1a1a1a; max-height: 300px; overflow-y: auto; }
         #selectedTasks { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 20px; justify-content: center; }
-        
-        .taskBox { background: #444; padding: 8px; border-radius: 8px; cursor: pointer; user-select: none; border: 2px solid transparent; font-size: 12px; font-weight: bold; transition: 0.1s; }
-        .taskBox.selected { background: #28a745; border-color: #fff; transform: scale(0.95); }
-        .selTag { background: #28a745; padding: 4px 8px; border-radius: 15px; font-size: 10px; }
+        .taskBox { background: #444; padding: 8px; border-radius: 8px; cursor: pointer; user-select: none; border: 2px solid transparent; font-size: 12px; font-weight: bold; }
+        .taskBox.selected { background: #28a745; border-color: #fff; }
         
         #assignedTasks { display: flex; flex-direction: column; gap: 12px; width: 100%; margin-top: 20px; }
         .assignedRow { background: #333; padding: 15px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; border-left: 5px solid #28a745; text-align: left; }
         
-        .checkbox { width: 30px; height: 30px; cursor: pointer; accent-color: #28a745; appearance: checkbox; margin-left: 15px; flex-shrink: 0; }
+        .checkbox { width: 30px; height: 30px; cursor: pointer; accent-color: #28a745; appearance: checkbox; margin-left: 15px; }
         button { padding: 15px 20px; font-size: 16px; border-radius: 10px; border: none; background-color: #28a745; color: white; cursor: pointer; width: 100%; font-weight: bold; margin-top: 10px; box-shadow: 0 4px #1a632a; transition: 0.1s; }
         button:active { transform: translateY(2px); box-shadow: 0 2px #1a632a; }
         
         .kill-btn { background-color: #dc3545; box-shadow: 0 4px #8b1e2a; margin-top: 20px; font-size: 20px; padding: 25px; }
-        .loc-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
-        .loc-btn { background: #444; border: 1px solid #666; padding: 15px; border-radius: 8px; font-weight: bold; }
-        
         #deathOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #8b1e2a; z-index: 9999; flex-direction: column; justify-content: center; align-items: center; padding: 30px; text-align: center; }
         #deathOverlay.active { display: flex; }
     </style>
@@ -68,18 +66,17 @@
     </div>
 </div>
 
-<audio id="deathSound" src="https://actions.google.com/sounds/v1/alerts/high_frequenzy_beep.ogg" preload="auto"></audio>
-
 <div id="deathOverlay">
     <h1 style="font-size: 2.5rem; margin-bottom: 20px;">ELIMINATED</h1>
-    <p style="font-size: 1.3rem; line-height: 1.5; margin-bottom: 30px;">
-        You have been killed. Wait for a meeting to rejoin.
+    <p style="font-size: 1.1rem; line-height: 1.5; margin-bottom: 30px;">
+        You have been killed! Complete your remaining tasks to help your team win.
     </p>
-    <button onclick="acknowledgeDeath()" style="background: white; color: #8b1e2a; width: 220px; font-size: 18px;">UNDERSTOOD</button>
+    <button onclick="acknowledgeDeath()" style="background: white; color: #8b1e2a; width: 220px;">UNDERSTOOD</button>
 </div>
 
 <div id="screenWelcome" class="screen active">
   <div class="box">
+    <img src="PASTE_YOUR_IMAGE_LINK_HERE" class="game-logo" alt="Logo">
     <h2>Among Us IRL</h2>
     <input type="text" id="username" placeholder="Enter Name" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px; background: #000; color: #fff; border: 1px solid #444;">
     <button onclick="chooseMode('create')">CREATE GAME</button>
@@ -89,9 +86,7 @@
 
 <div id="screenCreate" class="screen">
   <div class="box">
-    <div class="info-btn" onclick="toggleInfo(true)">
-        <img src="YOUR_UPLOADED_IMAGE_URL_HERE" alt="Info">
-    </div>
+    <div class="info-corner-btn" onclick="toggleInfo(true)">INFO</div>
     <h2>Host Settings</h2>
     <input type="number" id="maxPlayers" value="2" min="1" max="25" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px; background: #000; color: #fff; border: 1px solid #444;">
     <h3>Select Tasks</h3>
@@ -122,9 +117,7 @@
 
 <div id="screenTasks" class="screen">
   <div class="box">
-    <div class="info-btn" onclick="toggleInfo(true)">
-        <img src="YOUR_UPLOADED_IMAGE_URL_HERE" alt="Info">
-    </div>
+    <div class="info-corner-btn" onclick="toggleInfo(true)">INFO</div>
     <h3 style="margin:0;">YOUR ROLE:</h3>
     <h1 id="roleDisplay" style="margin: 5px 0 20px 0;">...</h1>
     
@@ -140,7 +133,7 @@
 <div id="screenKillPicker" class="screen">
     <div class="box">
         <h2>Eliminate Subject</h2>
-        <div id="pickerOptions" class="loc-grid"></div>
+        <div id="pickerOptions" style="display: flex; flex-direction: column; gap: 10px;"></div>
         <button onclick="showScreen('screenTasks')" style="background: #555;">CANCEL</button>
     </div>
 </div>
@@ -148,14 +141,14 @@
 <div id="screenComplete" class="screen">
   <div class="box">
     <h2 style="color: gold;">MISSION CLEAR</h2>
-    <p>Tasks complete! Stay alive.</p>
+    <p>Tasks complete! Stay alert.</p>
   </div>
 </div>
 
 <div id="screenVictory" class="screen">
     <div class="box">
       <h2 id="victoryHeader" style="color: #28a745;">VICTORY</h2>
-      <h1 id="victoryMessage" style="font-size: 1.5rem; margin: 20px 0;">Congrats You Have Survived!!</h1>
+      <h1 id="victoryMessage">Congrats!</h1>
       <button onclick="location.reload()">PLAY AGAIN</button>
     </div>
 </div>
@@ -164,6 +157,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
+// Firebase initialization (using your provided keys)
 const firebaseConfig = {
   apiKey: "AIzaSyD-rRsg7FxuddLe4moASb-cL6qHNwux0b8",
   authDomain: "among-us-irl-aec6e.firebaseapp.com",
@@ -180,7 +174,7 @@ const TASK_DATA = {
     "Games": "Put all of the Disk containers into bin",
     "Spelling": "What ever you want get creative",
     "Wires": "Connect the wires on the whiteboard",
-    "Measure": "Measure your willy",
+    "Measure": "Measure your items",
     "Balls": "Put the balls into the patriot bottle",
     "Watering Plant": "Water the plant",
     "Plushies": "Find the plushies and put them at mid",
@@ -195,7 +189,7 @@ const TASK_DATA = {
     "Cracking Santa": "Crack Santa",
     "Play Guitar": "Play guitar for 5 seconds",
     "Drums": "Hit Pan 5 times",
-    "Fix Pipes": "'Fix' pipes for 10 seconds",
+    "Fix Pipes": "Fix pipes for 10 seconds",
     "Clean Vents": "Clean them for 5 seconds each",
     "Check Shower": "Turn on shower to check Water",
     "Check Sink": "Turn on sink to check water",
@@ -289,10 +283,21 @@ function listenLobby(code){
     if(!game) return;
     document.getElementById('playerList').innerText = Object.keys(game.players).join(', ');
     if(isHost) document.getElementById('hostControls').style.display = 'block';
+
     if(game.status === 'started' && game.assignments && game.roles){
       myRole = game.roles[username];
       displayTasks(game.assignments[username], myRole);
-      if(game.victory === true) showScreen('screenVictory');
+      
+      if(game.deadPlayers && game.deadPlayers[username] && !game.deadPlayers[username].acknowledged) {
+          document.getElementById('deathOverlay').classList.add('active');
+      }
+
+      if(game.victory) {
+          const vHeader = document.getElementById('victoryHeader');
+          vHeader.innerText = myRole === 'Imposter' ? "DEFEAT" : "VICTORY";
+          vHeader.style.color = myRole === 'Imposter' ? "#dc3545" : "#28a745";
+          showScreen('screenVictory');
+      }
     }
   });
 }
@@ -301,15 +306,14 @@ function manualStart(){
   db.ref('games/'+currentGameCode).once('value', snapshot => {
     const game = snapshot.val();
     const players = Object.keys(game.players);
-    const tasks = [...game.tasks];
-    tasks.sort(()=>Math.random()-0.5);
+    const tasks = [...game.tasks].sort(()=>Math.random()-0.5);
     const assignments = {};
     players.forEach(p=>assignments[p]=[]);
     tasks.forEach((task,index)=>{ assignments[players[index % players.length]].push(task); });
     const impIndex = Math.floor(Math.random()*players.length);
     const roles = {};
     players.forEach((p,i)=> roles[p] = (i===impIndex ? 'Imposter' : 'Crewmate'));
-    db.ref('games/'+currentGameCode).update({ assignments, roles, status: 'started', victory: false });
+    db.ref('games/'+currentGameCode).update({ assignments, roles, status: 'started' });
   });
 }
 
@@ -326,8 +330,8 @@ function displayTasks(myTasks, role) {
     div.innerHTML = `<span>${taskName}</span> <input type="checkbox" class="checkbox">`;
     div.querySelector('input').addEventListener('change', (e)=>{
         if(e.target.checked) {
-            div.style.opacity = "0";
-            setTimeout(() => { div.remove(); checkTasksFinished(); }, 300);
+            div.style.opacity = "0.3";
+            setTimeout(() => { div.remove(); checkTasksFinished(); }, 500);
         }
     });
     container.appendChild(div);
@@ -336,10 +340,32 @@ function displayTasks(myTasks, role) {
 }
 
 function checkTasksFinished() {
-    const container = document.getElementById('assignedTasks');
-    if(container.children.length === 0 && myRole === 'Crewmate') {
+    if(document.getElementById('assignedTasks').children.length === 0 && myRole === 'Crewmate') {
         showScreen('screenComplete');
+        db.ref(`games/${currentGameCode}/taskProgress/${username}`).set(true);
     }
+}
+
+function openSubjectPicker() {
+    db.ref('games/'+currentGameCode+'/players').once('value', snapshot => {
+        const players = Object.keys(snapshot.val());
+        const container = document.getElementById('pickerOptions');
+        container.innerHTML = "";
+        players.forEach(p => {
+            if(p !== username) {
+                const btn = document.createElement('button');
+                btn.innerText = p;
+                btn.onclick = () => { db.ref(`games/${currentGameCode}/deadPlayers/${p}`).set({ acknowledged: false }); showScreen('screenTasks'); };
+                container.appendChild(btn);
+            }
+        });
+        showScreen('screenKillPicker');
+    });
+}
+
+function acknowledgeDeath() {
+    document.getElementById('deathOverlay').classList.remove('active');
+    db.ref(`games/${currentGameCode}/deadPlayers/${username}/acknowledged`).set(true);
 }
 </script>
 </body>
