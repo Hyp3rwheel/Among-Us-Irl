@@ -12,6 +12,15 @@
         h2 { margin-top: 0; color: #28a745; text-transform: uppercase; letter-spacing: 2px; }
         h3 { font-size: 1rem; color: #aaa; margin-bottom: 10px; }
         
+        /* Info Button & Modal Styles */
+        .header-container { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 5px; }
+        .info-btn { background: #444; border: 1px solid #666; color: #28a745; width: 30px; height: 30px; border-radius: 50%; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        #infoModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10000; padding: 20px; box-sizing: border-box; overflow-y: auto; text-align: left; }
+        .modal-content { max-width: 400px; margin: 0 auto; background: #222; padding: 20px; border-radius: 15px; border: 1px solid #444; }
+        .task-info-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .task-info-title { color: #28a745; font-weight: bold; display: block; }
+        .task-info-desc { color: #ddd; font-size: 0.9rem; }
+
         #taskContainer { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; border: 2px dashed #555; border-radius: 10px; margin-bottom: 20px; background: #1a1a1a; max-height: 300px; overflow-y: auto; }
         #selectedTasks { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 20px; justify-content: center; }
         
@@ -23,7 +32,6 @@
         .assignedRow { background: #333; padding: 15px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; border-left: 5px solid #28a745; text-align: left; animation: slideIn 0.3s ease-out; }
         
         @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
-
         .checkbox { width: 30px; height: 30px; cursor: pointer; accent-color: #28a745; -webkit-appearance: checkbox; appearance: checkbox; margin-left: 15px; flex-shrink: 0; }
         button { padding: 15px 20px; font-size: 16px; border-radius: 10px; border: none; background-color: #28a745; color: white; cursor: pointer; width: 100%; font-weight: bold; margin-top: 10px; box-shadow: 0 4px #1a632a; transition: 0.1s; }
         button:active { transform: translateY(2px); box-shadow: 0 2px #1a632a; }
@@ -37,6 +45,14 @@
     </style>
 </head>
 <body>
+
+<div id="infoModal">
+    <div class="modal-content">
+        <h2 style="color: #28a745; text-align: center;">Task Guide</h2>
+        <div id="modalTaskDetails"></div>
+        <button onclick="toggleInfo(false)" style="background: #555; box-shadow: 0 4px #333;">CLOSE</button>
+    </div>
+</div>
 
 <audio id="deathSound" src="https://actions.google.com/sounds/v1/alerts/high_frequenzy_beep.ogg" preload="auto"></audio>
 
@@ -59,7 +75,10 @@
 
 <div id="screenCreate" class="screen">
   <div class="box">
-    <h2>Host Settings</h2>
+    <div class="header-container">
+        <h2>Host Settings</h2>
+        <div class="info-btn" onclick="toggleInfo(true)">ⓘ</div>
+    </div>
     <input type="number" id="maxPlayers" value="2" min="1" max="25" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px; background: #000; color: #fff; border: 1px solid #444;">
     <h3>Select Tasks</h3>
     <div id="taskContainer"></div>
@@ -141,12 +160,56 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-const TASK_LIST = ["Games", "Spelling", "Wires", "Measure", "Balls", "Watering Plant", "Plushies", "Boxing gloves", "SkateBoard", "Minihoop", "Tote", "Stacking", "Nap Time", "Trash", "Fix Couch", "Cracking Santa", "Play Guitar", "Drums", "Fix Pipes", "Clean Vents", "Check Shower", "Check Sink", "Put Towels", "Gears", "OG Slips"];
+const TASK_DATA = {
+    "Games": "Put all of the Disk containers into bin",
+    "Spelling": "What ever you want get creative",
+    "Wires": "Connect the wires on the whiteboard",
+    "Measure": "Measure your willy",
+    "Balls": "Put the balls into the patriot bottle",
+    "Watering Plant": "Water the plant",
+    "Plushies": "Find the plushies and put them at mid",
+    "Boxing gloves": "Put boxing gloves on cones",
+    "Skateboard": "Play with tech deck for 15 seconds",
+    "Minihoop": "Make a hoop",
+    "Tote": "Put the things into the tote",
+    "Stacking": "Stack the vehicles safely",
+    "Nap Time": "Sleep for 15 seconds in yellow chair",
+    "Trash": "Take out the trash",
+    "Fix Couch": "Put cushions into couch",
+    "Cracking Santa": "Crack Santa",
+    "Play Guitar": "Play guitar for 5 seconds",
+    "Drums": "Hit Pan 5 times",
+    "Fix Pipes": "'Fix' pipes for 10 seconds",
+    "Clean Vents": "Clean them for 5 seconds each",
+    "Check Shower": "Turn on shower to check Water",
+    "Check Sink": "Turn on sink to check water",
+    "Put Towels": "Put towels in bin",
+    "Gears": "Make sure gears link up",
+    "OG Slips": "Write a task on a slip"
+};
+
+const TASK_LIST = Object.keys(TASK_DATA);
 
 let username = null;
 let currentGameCode = null;
 let isHost = false;
 let myRole = 'Crewmate';
+
+function toggleInfo(show) {
+    const modal = document.getElementById('infoModal');
+    const content = document.getElementById('modalTaskDetails');
+    if (show) {
+        content.innerHTML = TASK_LIST.map(name => `
+            <div class="task-info-item">
+                <span class="task-info-title">${name}</span>
+                <span class="task-info-desc">${TASK_DATA[name]}</span>
+            </div>
+        `).join('');
+        modal.style.display = 'block';
+    } else {
+        modal.style.display = 'none';
+    }
+}
 
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
