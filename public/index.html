@@ -1,3 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Among Us IRL - Multiplayer</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #111; color: #fff; text-align: center; margin:0; padding:0;}
+        .screen { display: none; min-height: 100vh; justify-content: center; align-items: flex-start; flex-direction: column; padding: 50px; }
+        .screen.active { display: flex; }
+        .box { background: #222; padding: 20px; border-radius: 15px; margin: 10px auto; min-width: 300px; position: relative; border: 1px solid #444; }
+        h2 { margin-bottom: 20px; color: #28a745; }
+        #taskContainer, #selectedTasks, #assignedTasks { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; min-height: 100px; padding: 10px; border: 2px dashed #555; border-radius: 10px; margin-bottom: 20px; }
+        .taskBox { background: #444; padding: 10px 15px; border-radius: 8px; cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: center; min-width: 40px; border: 2px solid transparent; }
+        .taskBox.selected { background: #28a745; border-color: #fff; }
+        button { padding: 12px 20px; font-size: 16px; border-radius: 6px; border: none; background-color: #28a745; color: white; cursor: pointer; margin: 5px; font-weight: bold; }
+        button:hover { background-color: #218838; }
+        input { padding: 10px; border-radius: 5px; border: none; margin-bottom: 10px; width: 80%; }
+        p { margin: 10px 0; }
+        .checkbox { transform: scale(1.5); margin-left: 15px; cursor: pointer; }
+        #playerList { font-size: 1.2rem; color: #28a745; margin: 15px 0; }
+    </style>
+</head>
+<body>
+
+<div id="screenWelcome" class="screen active">
+  <div class="box">
+    <h2>Among Us IRL</h2>
+    <input type="text" id="username" placeholder="Your Name">
+    <br>
+    <button onclick="chooseMode('create')">CREATE GAME</button>
+    <button onclick="chooseMode('join')">JOIN GAME</button>
+  </div>
+</div>
+
+<div id="screenCreate" class="screen">
+  <div class="box">
+    <h2>Game Settings</h2>
+    Max Players: <input type="number" id="maxPlayers" value="2" min="1" max="25">
+    <h3>Pick Tasks for the Game</h3>
+    <div id="taskContainer"></div>
+    <h3>Selected List</h3>
+    <div id="selectedTasks"></div>
+    <button onclick="startGame()">CREATE LOBBY</button>
+  </div>
+</div>
+
+<div id="screenJoin" class="screen">
+  <div class="box">
+    <h2>Join Mission</h2>
+    <input type="text" id="joinCode" placeholder="6-Digit Code">
+    <br>
+    <button onclick="joinGame()">JOIN</button>
+    <p id="joinMessage" style="color:red;"></p>
+  </div>
+</div>
+
+<div id="screenLobby" class="screen">
+  <div class="box">
+    <h2>Lobby</h2>
+    <p id="lobbyCodeDisplay" style="font-size: 1.5rem; letter-spacing: 5px;"></p>
+    <p>Players joined: <span id="currentCount">0</span> / <span id="totalNeeded">0</span></p>
+    <div id="playerList"></div>
+    
+    <div id="hostControls" style="display:none;">
+      <button onclick="manualStart()" style="background: #dc3545; padding: 20px; width: 100%;">START GAME</button>
+      <p style="font-size: 0.8rem;">(Click when everyone is ready)</p>
+    </div>
+    <div id="guestWaitNote" style="display:none;">
+      <p>Waiting for host to start...</p>
+    </div>
+  </div>
+</div>
+
+<div id="screenTasks" class="screen">
+  <div class="box">
+    <h2>Role: <span id="roleDisplay">...</span></h2>
+    <hr>
+    <h3>Your Tasks</h3>
+    <div id="assignedTasks"></div>
+  </div>
+</div>
+
+<div id="screenComplete" class="screen">
+  <div class="box">
+    <h2>Tasks Finished!</h2>
+    <p>Stay alive and watch for the Imposter.</p>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyD-rRsg7FxuddLe4moASb-cL6qHNwux0b8",
@@ -13,7 +106,7 @@ const db = firebase.database();
 
 let username = null;
 let currentGameCode = null;
-let isHost = false; // Important: track who the creator is
+let isHost = false;
 
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -22,7 +115,7 @@ function showScreen(id){
 
 function chooseMode(mode){
   username = document.getElementById('username').value.trim();
-  if(!username){ alert("Enter username!"); return; }
+  if(!username){ alert("Enter your name first!"); return; }
   if(mode==='create'){ 
     isHost = true;
     showScreen('screenCreate');
@@ -37,7 +130,7 @@ function generateTaskBoxes(){
   const container = document.getElementById('taskContainer');
   const selected = document.getElementById('selectedTasks');
   container.innerHTML=''; selected.innerHTML='';
-  for(let i=1;i<=25;i++){
+  for(let i=1;i<=20;i++){
     const t = document.createElement('div');
     t.className='taskBox';
     t.innerText=i;
@@ -48,9 +141,9 @@ function generateTaskBoxes(){
       } else {
         t.classList.add('selected');
         const b = document.createElement('div');
-        b.innerText=i;
-        b.dataset.task=i;
-        b.classList.add('selected');
+        b.className = 'taskBox selected';
+        b.innerText = i;
+        b.dataset.task = i;
         selected.appendChild(b);
       }
     };
@@ -61,7 +154,7 @@ function generateTaskBoxes(){
 function startGame(){
   const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
   const tasks = [...document.getElementById('selectedTasks').children].map(t=>t.innerText);
-  if(!maxPlayers || tasks.length===0){ alert("Enter players and select tasks!"); return; }
+  if(!maxPlayers || tasks.length===0){ alert("Set players and pick tasks!"); return; }
 
   currentGameCode = Math.floor(100000 + Math.random()*900000).toString();
   db.ref('games/'+currentGameCode).set({
@@ -69,10 +162,9 @@ function startGame(){
     maxPlayers,
     tasks,
     players: {[username]: true},
-    status: 'lobby' // Add a status to track game state
+    status: 'lobby'
   });
 
-  document.getElementById('gameCodeDisplay').innerText = `Game Code: ${currentGameCode}`;
   listenLobby(currentGameCode);
   showScreen('screenLobby');
 }
@@ -80,72 +172,83 @@ function startGame(){
 function joinGame(){
   const code = document.getElementById('joinCode').value.trim();
   if(!code){ alert("Enter code!"); return; }
-  
-  db.ref('games/'+code).once('value', snapshot => {
-    if(!snapshot.exists()) {
-      alert("Game not found!");
-    } else {
-      currentGameCode = code;
-      db.ref(`games/${code}/players/${username}`).set(true);
-      listenLobby(code);
-      showScreen('screenLobby');
-    }
+  db.ref('games/'+code).once('value', s => {
+    if(!s.exists()){ alert("Game not found!"); return; }
+    currentGameCode = code;
+    db.ref(`games/${code}/players/${username}`).set(true);
+    listenLobby(code);
+    showScreen('screenLobby');
   });
 }
 
 function listenLobby(code){
-  db.ref('games/'+code).on('value', snapshot=>{
+  document.getElementById('lobbyCodeDisplay').innerText = code;
+  db.ref('games/'+code).on('value', snapshot => {
     const game = snapshot.val();
     if(!game) return;
 
-    document.getElementById('lobbyInfo').innerText = `Code: ${code}`;
-    document.getElementById('playerList').innerText = Object.keys(game.players).join(', ');
+    const players = Object.keys(game.players);
+    document.getElementById('currentCount').innerText = players.length;
+    document.getElementById('totalNeeded').innerText = game.maxPlayers;
+    document.getElementById('playerList').innerText = players.join(', ');
 
-    // Only the HOST triggers the assignment logic
-    if(isHost && game.status === 'lobby' && Object.keys(game.players).length >= game.maxPlayers){
-      db.ref(`games/${code}/status`).set('started'); // Update status so this only runs ONCE
-      assignTasksAndRole(game);
+    if(isHost) {
+      document.getElementById('hostControls').style.display = 'block';
+    } else {
+      document.getElementById('guestWaitNote').style.display = 'block';
     }
 
-    // EVERYONE switches to task screen once assignments and roles exist in the DB
-    if(game.assignments && game.roles && game.assignments[username]){
+    // Trigger Task Screen for everyone when host clicks Start
+    if(game.status === 'started' && game.assignments && game.roles){
       displayTasks(game.assignments[username], game.roles[username]);
     }
   });
 }
 
-function assignTasksAndRole(game){
-  const players = Object.keys(game.players);
-  const tasks = [...game.tasks];
-  tasks.sort(()=>Math.random()-0.5);
-  
-  const assignments = {};
-  players.forEach(p=>assignments[p]=[]);
-  tasks.forEach((task,index)=>{
-    const player = players[index % players.length];
-    assignments[player].push(task);
-  });
+function manualStart(){
+  db.ref('games/'+currentGameCode).once('value', snapshot => {
+    const game = snapshot.val();
+    const players = Object.keys(game.players);
+    const tasks = [...game.tasks];
+    
+    // Shuffle and assign tasks
+    tasks.sort(()=>Math.random()-0.5);
+    const assignments = {};
+    players.forEach(p=>assignments[p]=[]);
+    tasks.forEach((task,index)=>{
+      const player = players[index % players.length];
+      assignments[player].push(task);
+    });
 
-  const imposterIndex = Math.floor(Math.random()*players.length);
-  const roles = {};
-  players.forEach((p,i)=> roles[p] = i===imposterIndex ? 'Imposter' : 'Crewmate');
+    // Random Imposter
+    const impIndex = Math.floor(Math.random()*players.length);
+    const roles = {};
+    players.forEach((p,i)=> roles[p] = (i===impIndex ? 'Imposter' : 'Crewmate'));
 
-  // Push all data to Firebase at once
-  db.ref(`games/${currentGameCode}`).update({
-    assignments: assignments,
-    roles: roles
+    // Push to DB
+    db.ref('games/'+currentGameCode).update({
+      assignments,
+      roles,
+      status: 'started'
+    });
   });
 }
 
 function displayTasks(myTasks, myRole) {
   const container = document.getElementById('assignedTasks');
-  if(container.innerHTML !== "") return; // Don't re-render if already there
+  if(container.innerHTML !== "") return; 
 
   document.getElementById('roleDisplay').innerText = myRole;
+  if(myRole === 'Imposter') {
+      document.getElementById('roleDisplay').style.color = 'red';
+  }
+
   myTasks.forEach(task=>{
     const div = document.createElement('div');
     div.className='taskBox selected';
-    div.innerHTML = `<span>${task}</span> <input type="checkbox" class="checkbox">`;
+    div.style.width = "80%";
+    div.style.justifyContent = "space-between";
+    div.innerHTML = `<span>Task ${task}</span> <input type="checkbox" class="checkbox">`;
     div.querySelector('input').addEventListener('change',()=>{
       if([...container.querySelectorAll('input')].every(c=>c.checked)){
         showScreen('screenComplete');
@@ -156,3 +259,6 @@ function displayTasks(myTasks, myRole) {
   showScreen('screenTasks');
 }
 </script>
+
+</body>
+</html>
