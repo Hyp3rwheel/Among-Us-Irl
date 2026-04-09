@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+\<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -10,29 +10,26 @@
         .screen.active { display: flex; }
         .box { background: #222; padding: 25px; border-radius: 15px; width: 100%; max-width: 350px; position: relative; border: 1px solid #444; box-shadow: 0 10px 30px rgba(0,0,0,0.5); box-sizing: border-box; }
         
-        /* Logo Styling */
-        .game-logo { width: 120px; margin-bottom: 15px; }
-
         h2 { margin-top: 0; color: #28a745; text-transform: uppercase; letter-spacing: 2px; }
         h3 { font-size: 1rem; color: #aaa; margin-bottom: 10px; }
         
-        /* Corner Info Button */
-        .info-corner-btn { 
+        /* Small Info Box Button */
+        .info-btn-box { 
             position: absolute; 
             top: 15px; 
             right: 15px; 
-            background: #333; 
+            background: rgba(40, 167, 69, 0.1); 
             border: 1px solid #28a745; 
             color: #28a745; 
-            padding: 5px 10px; 
-            border-radius: 8px; 
-            font-size: 12px; 
+            padding: 4px 8px; 
+            border-radius: 5px; 
+            font-size: 11px; 
             font-weight: bold; 
             cursor: pointer; 
             z-index: 100;
         }
 
-        /* Modal Styles */
+        /* Modal / Tab Styles */
         #infoModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 10000; padding: 20px; box-sizing: border-box; overflow-y: auto; text-align: left; }
         .modal-content { max-width: 400px; margin: 0 auto; background: #222; padding: 20px; border-radius: 15px; border: 1px solid #444; }
         .task-info-item { margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 5px; }
@@ -60,7 +57,7 @@
 
 <div id="infoModal">
     <div class="modal-content">
-        <h2 style="color: #28a745; text-align: center;">Task Guide</h2>
+        <h2 style="color: #28a745; text-align: center;">Task Info</h2>
         <div id="modalTaskDetails"></div>
         <button onclick="toggleInfo(false)" style="background: #555; box-shadow: 0 4px #333;">CLOSE</button>
     </div>
@@ -76,7 +73,6 @@
 
 <div id="screenWelcome" class="screen active">
   <div class="box">
-    <img src="PASTE_YOUR_IMAGE_LINK_HERE" class="game-logo" alt="Logo">
     <h2>Among Us IRL</h2>
     <input type="text" id="username" placeholder="Enter Name" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px; background: #000; color: #fff; border: 1px solid #444;">
     <button onclick="chooseMode('create')">CREATE GAME</button>
@@ -86,7 +82,7 @@
 
 <div id="screenCreate" class="screen">
   <div class="box">
-    <div class="info-corner-btn" onclick="toggleInfo(true)">INFO</div>
+    <div class="info-btn-box" onclick="toggleInfo(true)">INFO</div>
     <h2>Host Settings</h2>
     <input type="number" id="maxPlayers" value="2" min="1" max="25" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px; background: #000; color: #fff; border: 1px solid #444;">
     <h3>Select Tasks</h3>
@@ -117,7 +113,7 @@
 
 <div id="screenTasks" class="screen">
   <div class="box">
-    <div class="info-corner-btn" onclick="toggleInfo(true)">INFO</div>
+    <div class="info-btn-box" onclick="toggleInfo(true)">INFO</div>
     <h3 style="margin:0;">YOUR ROLE:</h3>
     <h1 id="roleDisplay" style="margin: 5px 0 20px 0;">...</h1>
     
@@ -157,7 +153,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-// Firebase initialization (using your provided keys)
 const firebaseConfig = {
   apiKey: "AIzaSyD-rRsg7FxuddLe4moASb-cL6qHNwux0b8",
   authDomain: "among-us-irl-aec6e.firebaseapp.com",
