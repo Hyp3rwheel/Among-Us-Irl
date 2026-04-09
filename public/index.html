@@ -12,18 +12,17 @@
         h2 { margin-top: 0; color: #28a745; text-transform: uppercase; letter-spacing: 2px; }
         h3 { font-size: 1rem; color: #aaa; margin-bottom: 10px; }
         
-        /* Progress Bar Styles */
-        .progress-container { width: 100%; background: #444; border-radius: 10px; height: 20px; margin-bottom: 20px; border: 1px solid #666; overflow: hidden; }
-        #progressBar { width: 0%; height: 100%; background: #28a745; transition: width 0.3s ease; }
-
-        #taskContainer, #selectedTasks { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 10px; border: 2px dashed #555; border-radius: 10px; margin-bottom: 20px; background: #1a1a1a; }
-        .taskBox { background: #444; padding: 12px 5px; border-radius: 8px; cursor: pointer; user-select: none; border: 2px solid transparent; font-weight: bold; transition: 0.1s; display: flex; align-items: center; justify-content: center; }
+        #taskContainer { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; border: 2px dashed #555; border-radius: 10px; margin-bottom: 20px; background: #1a1a1a; max-height: 300px; overflow-y: auto; }
+        #selectedTasks { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 20px; justify-content: center; }
+        
+        .taskBox { background: #444; padding: 8px; border-radius: 8px; cursor: pointer; user-select: none; border: 2px solid transparent; font-size: 12px; font-weight: bold; transition: 0.1s; }
         .taskBox.selected { background: #28a745; border-color: #fff; transform: scale(0.95); }
+        .selTag { background: #28a745; padding: 4px 8px; border-radius: 15px; font-size: 10px; }
         
         #assignedTasks { display: flex; flex-direction: column; gap: 12px; width: 100%; margin-top: 20px; }
-        .assignedRow { background: #333; padding: 15px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; border-left: 5px solid #28a745; text-align: left; animation: fadeIn 0.3s ease; }
+        .assignedRow { background: #333; padding: 15px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; border-left: 5px solid #28a745; text-align: left; animation: slideIn 0.3s ease-out; }
         
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
 
         .checkbox { width: 30px; height: 30px; cursor: pointer; accent-color: #28a745; -webkit-appearance: checkbox; appearance: checkbox; margin-left: 15px; flex-shrink: 0; }
         button { padding: 15px 20px; font-size: 16px; border-radius: 10px; border: none; background-color: #28a745; color: white; cursor: pointer; width: 100%; font-weight: bold; margin-top: 10px; box-shadow: 0 4px #1a632a; transition: 0.1s; }
@@ -62,7 +61,7 @@
   <div class="box">
     <h2>Host Settings</h2>
     <input type="number" id="maxPlayers" value="2" min="1" max="25" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px; background: #000; color: #fff; border: 1px solid #444;">
-    <h3>Select Tasks (1-25)</h3>
+    <h3>Select Tasks</h3>
     <div id="taskContainer"></div>
     <div id="selectedTasks"></div>
     <button onclick="startGame()">OPEN LOBBY</button>
@@ -98,9 +97,6 @@
 
 <div id="screenTasks" class="screen">
   <div class="box">
-    <div class="progress-container">
-        <div id="progressBar"></div>
-    </div>
     <h3 style="margin:0;">YOUR ROLE:</h3>
     <h1 id="roleDisplay" style="margin: 5px 0 20px 0;">...</h1>
     
@@ -115,9 +111,9 @@
 
 <div id="screenComplete" class="screen">
   <div class="box">
-    <h2 style="color: gold;">TASKS FINISHED</h2>
-    <p>You have done your part.</p>
-    <p>Help the team win by staying safe.</p>
+    <h2 style="color: gold;">MISSION CLEAR</h2>
+    <p>You finished your tasks!</p>
+    <p>Stay alert.</p>
   </div>
 </div>
 
@@ -145,6 +141,8 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+const TASK_LIST = ["Games", "Spelling", "Wires", "Measure", "Balls", "Watering Plant", "Plushies", "Boxing gloves", "SkateBoard", "Minihoop", "Tote", "Stacking", "Nap Time", "Trash", "Fix Couch", "Cracking Santa", "Play Guitar", "Drums", "Fix Pipes", "Clean Vents", "Check Shower", "Check Sink", "Put Towels", "Gears", "OG Slips"];
+
 let username = null;
 let currentGameCode = null;
 let isHost = false;
@@ -166,27 +164,28 @@ function generateTaskBoxes(){
   const container = document.getElementById('taskContainer');
   const selected = document.getElementById('selectedTasks');
   container.innerHTML=''; selected.innerHTML='';
-  for(let i=1;i<=25;i++){
+  TASK_LIST.forEach((taskName) => {
     const t = document.createElement('div');
-    t.className='taskBox'; t.innerText=i;
+    t.className='taskBox'; t.innerText=taskName;
     t.onclick = ()=>{
       if(t.classList.contains('selected')){
         t.classList.remove('selected');
-        selected.querySelector(`div[data-task="${i}"]`)?.remove();
+        selected.querySelector(`div[data-task="${taskName}"]`)?.remove();
       } else {
         t.classList.add('selected');
         const b = document.createElement('div');
-        b.className = 'taskBox selected'; b.innerText = i; b.dataset.task = i;
+        b.className = 'selTag'; b.innerText = taskName; b.dataset.task = taskName;
         selected.appendChild(b);
       }
     };
     container.appendChild(t);
-  }
+  });
 }
 
 function startGame(){
   const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
   const tasks = [...document.getElementById('selectedTasks').children].map(t=>t.innerText);
+  if(tasks.length === 0) { alert("Select at least one task!"); return; }
   currentGameCode = Math.floor(100000 + Math.random()*900000).toString();
   db.ref('games/'+currentGameCode).set({
     creator: username, maxPlayers, tasks, players: {[username]: true}, status: 'lobby'
@@ -218,9 +217,6 @@ function listenLobby(code){
       myRole = game.roles[username];
       displayTasks(game.assignments[username], myRole);
       
-      // Update Real-time Progress Bar
-      updateProgressBarDisplay(game.taskCounts);
-
       if(myRole === 'Crewmate' && game.deadPlayers && game.deadPlayers[username]) {
           if(!game.deadPlayers[username].acknowledged) {
               document.getElementById('deathSound').play().catch(e => {});
@@ -246,37 +242,24 @@ function listenLobby(code){
   });
 }
 
-function updateProgressBarDisplay(counts) {
-    if(!counts) return;
-    const percentage = (counts.completed / counts.total) * 100;
-    document.getElementById('progressBar').style.width = percentage + "%";
-}
-
 function manualStart(){
   db.ref('games/'+currentGameCode).once('value', snapshot => {
     const game = snapshot.val();
     const players = Object.keys(game.players);
     const tasks = [...game.tasks];
     tasks.sort(()=>Math.random()-0.5);
-    
     const assignments = {};
     players.forEach(p=>assignments[p]=[]);
     tasks.forEach((task,index)=>{ assignments[players[index % players.length]].push(task); });
-    
     const impIndex = Math.floor(Math.random()*players.length);
     const roles = {};
     players.forEach((p,i)=> roles[p] = (i===impIndex ? 'Imposter' : 'Crewmate'));
     
-    // Calculate total crew tasks (imposters don't count toward total tasks needed)
-    let totalCrewTasks = 0;
-    players.forEach(p => {
-        if(roles[p] === 'Crewmate') totalCrewTasks += assignments[p].length;
-    });
+    const progress = {};
+    players.forEach(p => progress[p] = false);
 
     db.ref('games/'+currentGameCode).update({
-        assignments, roles, status: 'started',
-        taskCounts: { total: totalCrewTasks, completed: 0 },
-        victory: false
+        assignments, roles, status: 'started', taskProgress: progress, victory: false
     });
   });
 }
@@ -288,41 +271,44 @@ function displayTasks(myTasks, role) {
   document.getElementById('roleDisplay').style.color = (role === 'Imposter' ? '#ff4d4d' : '#28a745');
   if(role === 'Imposter') document.getElementById('imposterTools').style.display = 'block';
 
-  myTasks.forEach(taskNum =>{
+  myTasks.forEach(taskName =>{
     const div = document.createElement('div');
     div.className='assignedRow';
-    div.id = 'task-row-' + taskNum;
-    div.innerHTML = `<span class="taskLabel">Task ${taskNum}</span> <input type="checkbox" class="checkbox">`;
-    
+    div.innerHTML = `<span>${taskName}</span> <input type="checkbox" class="checkbox">`;
     div.querySelector('input').addEventListener('change', (e)=>{
-      if(e.target.checked) {
-        // Remove from UI
-        div.remove();
-        // Update database
-        incrementGlobalProgress();
-        
-        // If no tasks left on screen, show waiting screen
-        if(container.children.length === 0) {
-           showScreen('screenComplete');
+        if(e.target.checked) {
+            div.style.opacity = "0";
+            setTimeout(() => {
+                div.remove();
+                checkTasksFinished();
+            }, 300);
         }
-      }
     });
     container.appendChild(div);
   });
   showScreen('screenTasks');
 }
 
-function incrementGlobalProgress() {
-    db.ref(`games/${currentGameCode}/taskCounts`).transaction(current => {
-        if (current) {
-            current.completed++;
-        }
-        return current;
-    }).then(result => {
-        const updated = result.snapshot.val();
-        if(updated.completed >= updated.total) {
-            db.ref(`games/${currentGameCode}`).update({ victory: true });
-        }
+function checkTasksFinished() {
+    const container = document.getElementById('assignedTasks');
+    if(container.children.length === 0 && myRole === 'Crewmate') {
+        showScreen('screenComplete');
+        updateGlobalProgress();
+    }
+}
+
+function updateGlobalProgress() {
+    db.ref(`games/${currentGameCode}/taskProgress/${username}`).set(true).then(() => {
+        db.ref('games/'+currentGameCode).once('value', snapshot => {
+            const game = snapshot.val();
+            const roles = game.roles;
+            const progress = game.taskProgress;
+            const crewmates = Object.keys(roles).filter(p => roles[p] === 'Crewmate');
+            const allCrewFinished = crewmates.every(p => progress[p] === true);
+            if(allCrewFinished) {
+                db.ref(`games/${currentGameCode}`).update({ victory: true });
+            }
+        });
     });
 }
 
