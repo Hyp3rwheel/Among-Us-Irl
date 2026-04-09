@@ -114,8 +114,8 @@
 
 <div id="screenVictory" class="screen">
     <div class="box">
-      <h2 style="color: #28a745;">VICTORY</h2>
-      <h1 style="font-size: 2.5rem; margin: 20px 0;">Congrats You Have Survived!!</h1>
+      <h2 id="victoryHeader" style="color: #28a745;">VICTORY</h2>
+      <h1 id="victoryMessage" style="font-size: 1.5rem; margin: 20px 0;">Congrats You Have Survived!!</h1>
       <button onclick="location.reload()">PLAY AGAIN</button>
     </div>
 </div>
@@ -209,7 +209,6 @@ function listenLobby(code){
       myRole = game.roles[username];
       displayTasks(game.assignments[username], myRole);
       
-      // Check for death
       if(myRole === 'Crewmate' && game.deadPlayers && game.deadPlayers[username]) {
           if(!game.deadPlayers[username].acknowledged) {
               document.getElementById('deathSound').play().catch(e => {});
@@ -217,8 +216,19 @@ function listenLobby(code){
           }
       }
 
-      // Check for Victory
       if(game.victory === true) {
+          const victoryHeader = document.getElementById('victoryHeader');
+          const victoryMessage = document.getElementById('victoryMessage');
+          
+          if(myRole === 'Imposter') {
+              victoryHeader.innerText = "DEFEAT";
+              victoryHeader.style.color = "#dc3545";
+              victoryMessage.innerText = "You failed to take out the rest of your crewmates, better luck next time you fucking chud";
+          } else {
+              victoryHeader.innerText = "VICTORY";
+              victoryHeader.style.color = "#28a745";
+              victoryMessage.innerText = "Congrats You Have Survived!!";
+          }
           showScreen('screenVictory');
       }
     }
@@ -238,7 +248,6 @@ function manualStart(){
     const roles = {};
     players.forEach((p,i)=> roles[p] = (i===impIndex ? 'Imposter' : 'Crewmate'));
     
-    // Track task completion status for all players
     const progress = {};
     players.forEach(p => progress[p] = false);
 
@@ -273,16 +282,12 @@ function displayTasks(myTasks, role) {
 
 function updateGlobalProgress() {
     db.ref(`games/${currentGameCode}/taskProgress/${username}`).set(true).then(() => {
-        // Check if everyone is done
         db.ref('games/'+currentGameCode).once('value', snapshot => {
             const game = snapshot.val();
             const roles = game.roles;
             const progress = game.taskProgress;
-            
-            // A win happens if every player who is a 'Crewmate' has true in taskProgress
             const crewmates = Object.keys(roles).filter(p => roles[p] === 'Crewmate');
             const allCrewFinished = crewmates.every(p => progress[p] === true);
-            
             if(allCrewFinished) {
                 db.ref(`games/${currentGameCode}`).update({ victory: true });
             }
