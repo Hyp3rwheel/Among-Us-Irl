@@ -17,15 +17,15 @@
             position: absolute; 
             top: 15px; 
             right: 15px; 
-            width: 28px; 
-            height: 28px; 
+            width: 30px; 
+            height: 30px; 
             cursor: pointer; 
             z-index: 100;
         }
         .info-btn img { 
             width: 100%; 
             height: 100%; 
-            /* Turns the black icon into the Among Us Green */
+            /* This filter makes the black icon look green to match your theme */
             filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(86deg) brightness(118%) contrast(119%);
         }
 
@@ -44,9 +44,8 @@
         .selTag { background: #28a745; padding: 4px 8px; border-radius: 15px; font-size: 10px; }
         
         #assignedTasks { display: flex; flex-direction: column; gap: 12px; width: 100%; margin-top: 20px; }
-        .assignedRow { background: #333; padding: 15px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; border-left: 5px solid #28a745; text-align: left; animation: slideIn 0.3s ease-out; }
+        .assignedRow { background: #333; padding: 15px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; border-left: 5px solid #28a745; text-align: left; }
         
-        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
         .checkbox { width: 30px; height: 30px; cursor: pointer; accent-color: #28a745; appearance: checkbox; margin-left: 15px; flex-shrink: 0; }
         button { padding: 15px 20px; font-size: 16px; border-radius: 10px; border: none; background-color: #28a745; color: white; cursor: pointer; width: 100%; font-weight: bold; margin-top: 10px; box-shadow: 0 4px #1a632a; transition: 0.1s; }
         button:active { transform: translateY(2px); box-shadow: 0 2px #1a632a; }
@@ -74,7 +73,7 @@
 <div id="deathOverlay">
     <h1 style="font-size: 2.5rem; margin-bottom: 20px;">ELIMINATED</h1>
     <p style="font-size: 1.3rem; line-height: 1.5; margin-bottom: 30px;">
-        You have been killed. After you are reported or after a meeting, you will be able to continue and finish the rest of your tasks.
+        You have been killed. Wait for a meeting to rejoin.
     </p>
     <button onclick="acknowledgeDeath()" style="background: white; color: #8b1e2a; width: 220px; font-size: 18px;">UNDERSTOOD</button>
 </div>
@@ -91,7 +90,7 @@
 <div id="screenCreate" class="screen">
   <div class="box">
     <div class="info-btn" onclick="toggleInfo(true)">
-        <img src="https://i.ibb.co/6ndf09X/info-icon.png" alt="Info">
+        <img src="YOUR_UPLOADED_IMAGE_URL_HERE" alt="Info">
     </div>
     <h2>Host Settings</h2>
     <input type="number" id="maxPlayers" value="2" min="1" max="25" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px; background: #000; color: #fff; border: 1px solid #444;">
@@ -124,7 +123,7 @@
 <div id="screenTasks" class="screen">
   <div class="box">
     <div class="info-btn" onclick="toggleInfo(true)">
-        <img src="https://i.ibb.co/6ndf09X/info-icon.png" alt="Info">
+        <img src="YOUR_UPLOADED_IMAGE_URL_HERE" alt="Info">
     </div>
     <h3 style="margin:0;">YOUR ROLE:</h3>
     <h1 id="roleDisplay" style="margin: 5px 0 20px 0;">...</h1>
@@ -149,8 +148,7 @@
 <div id="screenComplete" class="screen">
   <div class="box">
     <h2 style="color: gold;">MISSION CLEAR</h2>
-    <p>You finished your tasks!</p>
-    <p>Stay alert.</p>
+    <p>Tasks complete! Stay alive.</p>
   </div>
 </div>
 
@@ -294,26 +292,7 @@ function listenLobby(code){
     if(game.status === 'started' && game.assignments && game.roles){
       myRole = game.roles[username];
       displayTasks(game.assignments[username], myRole);
-      if(myRole === 'Crewmate' && game.deadPlayers && game.deadPlayers[username]) {
-          if(!game.deadPlayers[username].acknowledged) {
-              document.getElementById('deathSound').play().catch(e => {});
-              document.getElementById('deathOverlay').classList.add('active');
-          }
-      }
-      if(game.victory === true) {
-          const victoryHeader = document.getElementById('victoryHeader');
-          const victoryMessage = document.getElementById('victoryMessage');
-          if(myRole === 'Imposter') {
-              victoryHeader.innerText = "DEFEAT";
-              victoryHeader.style.color = "#dc3545";
-              victoryMessage.innerText = "You failed to take out the rest of your crewmates, better luck next time you fucking chud";
-          } else {
-              victoryHeader.innerText = "VICTORY";
-              victoryHeader.style.color = "#28a745";
-              victoryMessage.innerText = "Congrats You Have Survived!!";
-          }
-          showScreen('screenVictory');
-      }
+      if(game.victory === true) showScreen('screenVictory');
     }
   });
 }
@@ -360,38 +339,7 @@ function checkTasksFinished() {
     const container = document.getElementById('assignedTasks');
     if(container.children.length === 0 && myRole === 'Crewmate') {
         showScreen('screenComplete');
-        db.ref(`games/${currentGameCode}/taskProgress/${username}`).set(true).then(() => {
-            db.ref('games/'+currentGameCode).once('value', snapshot => {
-                const game = snapshot.val();
-                const crew = Object.keys(game.roles).filter(p => game.roles[p] === 'Crewmate');
-                const allDone = crew.every(p => game.taskProgress && game.taskProgress[p] === true);
-                if(allDone) db.ref(`games/${currentGameCode}`).update({ victory: true });
-            });
-        });
     }
-}
-
-function openSubjectPicker() {
-    db.ref('games/'+currentGameCode+'/players').once('value', snapshot => {
-        const players = Object.keys(snapshot.val());
-        const container = document.getElementById('pickerOptions');
-        container.innerHTML = "";
-        players.forEach(p => {
-            if(p !== username) {
-                const btn = document.createElement('button');
-                btn.className = "loc-btn";
-                btn.innerText = p;
-                btn.onclick = () => { db.ref(`games/${currentGameCode}/deadPlayers/${p}`).set({ acknowledged: false }); showScreen('screenTasks'); };
-                container.appendChild(btn);
-            }
-        });
-        showScreen('screenKillPicker');
-    });
-}
-
-function acknowledgeDeath() {
-    document.getElementById('deathOverlay').classList.remove('active');
-    db.ref(`games/${currentGameCode}/deadPlayers/${username}/acknowledged`).set(true);
 }
 </script>
 </body>
