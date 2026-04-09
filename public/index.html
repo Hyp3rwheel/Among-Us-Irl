@@ -1,85 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Among Us IRL - Multiplayer</title>
-<style>
-body { font-family: Arial; background: #111; color: #fff; text-align: center; margin:0; padding:0;}
-.screen { display: none; min-height: 100vh; justify-content: center; align-items: flex-start; flex-direction: column; padding: 50px; }
-.screen.active { display: flex; }
-.box { background: #222; padding: 20px; border-radius: 15px; margin: 10px auto; min-width: 300px; position: relative; }
-h2 { margin-bottom: 20px; }
-#taskContainer, #selectedTasks, #assignedTasks { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; min-height: 150px; padding: 10px; border: 2px dashed #555; border-radius: 10px; margin-bottom: 20px; }
-.taskBox { background: #28a745; padding: 10px 15px; border-radius: 8px; cursor: pointer; user-select: none; display: flex; align-items: center; justify-content: space-between; min-width: 60px; }
-.taskBox.selected { background: #28a745; }
-button { padding: 12px 20px; font-size: 16px; border-radius: 6px; border: none; background-color: #28a745; color: white; cursor: pointer; }
-button:hover { background-color: #218838; }
-p { margin: 10px 0; }
-.checkbox { margin-left: 5px; }
-</style>
-</head>
-<body>
-
-<div id="screenWelcome" class="screen active">
-  <div class="box">
-    <h2>Welcome!</h2>
-    <input type="text" id="username" placeholder="Enter your username"><br><br>
-    <button onclick="chooseMode('create')">Create Game</button>
-    <button onclick="chooseMode('join')">Join Game</button>
-  </div>
-</div>
-
-<div id="screenCreate" class="screen">
-  <div class="box">
-    <h2>Create Game</h2>
-    Players: <input type="number" id="maxPlayers" min="1" max="25"><br><br>
-
-    <h3>Available Tasks (click to select)</h3>
-    <div id="taskContainer"></div>
-
-    <h3>Your Selected Tasks</h3>
-    <div id="selectedTasks"></div>
-
-    <button onclick="startGame()">Create Game</button>
-    <p id="gameCodeDisplay"></p>
-  </div>
-</div>
-
-<div id="screenJoin" class="screen">
-  <div class="box">
-    <h2>Join Game</h2>
-    Enter Game Code: <input type="text" id="joinCode"><br><br>
-    <button onclick="joinGame()">Join</button>
-    <p id="joinMessage"></p>
-  </div>
-</div>
-
-<div id="screenLobby" class="screen">
-  <div class="box">
-    <h2>Lobby</h2>
-    <p id="lobbyInfo"></p>
-    <p>Players: <span id="playerList"></span></p>
-  </div>
-</div>
-
-<div id="screenTasks" class="screen">
-  <div class="box">
-    <h2>Your Role: <span id="roleDisplay">...</span></h2>
-    <h3>Tasks</h3>
-    <div id="assignedTasks"></div>
-  </div>
-</div>
-
-<div id="screenComplete" class="screen">
-  <div class="box">
-    <h2>You have completed all your tasks, nice job!</h2>
-  </div>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyD-rRsg7FxuddLe4moASb-cL6qHNwux0b8",
@@ -95,24 +13,26 @@ const db = firebase.database();
 
 let username = null;
 let currentGameCode = null;
+let isHost = false; // Important: track who the creator is
 
-// --- Screens ---
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
 
-// --- Welcome ---
 function chooseMode(mode){
   username = document.getElementById('username').value.trim();
   if(!username){ alert("Enter username!"); return; }
   if(mode==='create'){ 
+    isHost = true;
     showScreen('screenCreate');
     generateTaskBoxes();
-  } else { showScreen('screenJoin'); }
+  } else { 
+    isHost = false;
+    showScreen('screenJoin'); 
+  }
 }
 
-// --- Click Tasks ---
 function generateTaskBoxes(){
   const container = document.getElementById('taskContainer');
   const selected = document.getElementById('selectedTasks');
@@ -138,7 +58,6 @@ function generateTaskBoxes(){
   }
 }
 
-// --- Start Game ---
 function startGame(){
   const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
   const tasks = [...document.getElementById('selectedTasks').children].map(t=>t.innerText);
@@ -149,7 +68,8 @@ function startGame(){
     creator: username,
     maxPlayers,
     tasks,
-    players: {[username]: true}
+    players: {[username]: true},
+    status: 'lobby' // Add a status to track game state
   });
 
   document.getElementById('gameCodeDisplay').innerText = `Game Code: ${currentGameCode}`;
@@ -157,56 +77,71 @@ function startGame(){
   showScreen('screenLobby');
 }
 
-// --- Join Game ---
 function joinGame(){
   const code = document.getElementById('joinCode').value.trim();
   if(!code){ alert("Enter code!"); return; }
-  currentGameCode = code;
-  db.ref(`games/${code}/players/${username}`).set(true);
-  listenLobby(code);
-  showScreen('screenLobby');
-}
-
-// --- Lobby ---
-function listenLobby(code){
-  db.ref('games/'+code).on('value', snapshot=>{
-    const game = snapshot.val();
-    if(!game) return;
-    document.getElementById('lobbyInfo').innerText = `Code: ${code}, Tasks: ${game.tasks.join(', ')}`;
-    document.getElementById('playerList').innerText = Object.keys(game.players).join(', ');
-
-    if(Object.keys(game.players).length === game.maxPlayers){
-      assignTasksAndRole(game);
+  
+  db.ref('games/'+code).once('value', snapshot => {
+    if(!snapshot.exists()) {
+      alert("Game not found!");
+    } else {
+      currentGameCode = code;
+      db.ref(`games/${code}/players/${username}`).set(true);
+      listenLobby(code);
+      showScreen('screenLobby');
     }
   });
 }
 
-// --- Assign tasks evenly and roles ---
+function listenLobby(code){
+  db.ref('games/'+code).on('value', snapshot=>{
+    const game = snapshot.val();
+    if(!game) return;
+
+    document.getElementById('lobbyInfo').innerText = `Code: ${code}`;
+    document.getElementById('playerList').innerText = Object.keys(game.players).join(', ');
+
+    // Only the HOST triggers the assignment logic
+    if(isHost && game.status === 'lobby' && Object.keys(game.players).length >= game.maxPlayers){
+      db.ref(`games/${code}/status`).set('started'); // Update status so this only runs ONCE
+      assignTasksAndRole(game);
+    }
+
+    // EVERYONE switches to task screen once assignments and roles exist in the DB
+    if(game.assignments && game.roles && game.assignments[username]){
+      displayTasks(game.assignments[username], game.roles[username]);
+    }
+  });
+}
+
 function assignTasksAndRole(game){
   const players = Object.keys(game.players);
   const tasks = [...game.tasks];
-  tasks.sort(()=>Math.random()-0.5); // shuffle
+  tasks.sort(()=>Math.random()-0.5);
+  
   const assignments = {};
   players.forEach(p=>assignments[p]=[]);
   tasks.forEach((task,index)=>{
     const player = players[index % players.length];
     assignments[player].push(task);
   });
-  db.ref(`games/${currentGameCode}/assignments`).set(assignments);
 
-  // Assign roles (1 imposter)
   const imposterIndex = Math.floor(Math.random()*players.length);
   const roles = {};
   players.forEach((p,i)=> roles[p] = i===imposterIndex ? 'Imposter' : 'Crewmate');
-  db.ref(`games/${currentGameCode}/roles`).set(roles);
 
-  // Display to this user
-  const myTasks = assignments[username] || [];
-  const myRole = roles[username];
-  document.getElementById('roleDisplay').innerText = myRole;
+  // Push all data to Firebase at once
+  db.ref(`games/${currentGameCode}`).update({
+    assignments: assignments,
+    roles: roles
+  });
+}
 
+function displayTasks(myTasks, myRole) {
   const container = document.getElementById('assignedTasks');
-  container.innerHTML='';
+  if(container.innerHTML !== "") return; // Don't re-render if already there
+
+  document.getElementById('roleDisplay').innerText = myRole;
   myTasks.forEach(task=>{
     const div = document.createElement('div');
     div.className='taskBox selected';
@@ -218,9 +153,6 @@ function assignTasksAndRole(game){
     });
     container.appendChild(div);
   });
-
   showScreen('screenTasks');
 }
 </script>
-</body>
-</html>
