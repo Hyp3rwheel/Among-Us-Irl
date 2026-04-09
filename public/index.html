@@ -12,41 +12,46 @@
         h2 { margin-top: 0; color: #28a745; text-transform: uppercase; letter-spacing: 2px; }
         h3 { font-size: 1rem; color: #aaa; margin-bottom: 10px; }
         
-        /* Selection Grid for Host */
         #taskContainer, #selectedTasks { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 10px; border: 2px dashed #555; border-radius: 10px; margin-bottom: 20px; background: #1a1a1a; }
-        
         .taskBox { background: #444; padding: 12px 5px; border-radius: 8px; cursor: pointer; user-select: none; border: 2px solid transparent; font-weight: bold; transition: 0.1s; display: flex; align-items: center; justify-content: center; }
         .taskBox.selected { background: #28a745; border-color: #fff; transform: scale(0.95); }
         
-        /* Task List for Players (iPhone Optimized) */
         #assignedTasks { display: flex; flex-direction: column; gap: 12px; width: 100%; margin-top: 20px; }
         .assignedRow { background: #333; padding: 15px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; border-left: 5px solid #28a745; text-align: left; }
-        .taskLabel { font-size: 1.1rem; font-weight: bold; pointer-events: none; flex-grow: 1; }
         
-        /* Checkbox fix for VS Code warning and iPhone alignment */
-        .checkbox { 
-            width: 30px; 
-            height: 30px; 
-            cursor: pointer; 
-            accent-color: #28a745; 
-            -webkit-appearance: checkbox; 
-            appearance: checkbox; 
-            margin-left: 15px; 
-            flex-shrink: 0; 
-        }
-
+        .checkbox { width: 30px; height: 30px; cursor: pointer; accent-color: #28a745; -webkit-appearance: checkbox; appearance: checkbox; margin-left: 15px; flex-shrink: 0; }
         button { padding: 15px 20px; font-size: 16px; border-radius: 10px; border: none; background-color: #28a745; color: white; cursor: pointer; width: 100%; font-weight: bold; margin-top: 10px; box-shadow: 0 4px #1a632a; transition: 0.1s; }
         button:active { transform: translateY(2px); box-shadow: 0 2px #1a632a; }
-        input { padding: 12px; border-radius: 8px; border: 2px solid #444; background: #000; color: #fff; margin-bottom: 15px; width: 100%; box-sizing: border-box; font-size: 16px; }
-        #playerList { font-size: 1.1rem; background: #111; padding: 10px; border-radius: 8px; color: #28a745; min-height: 40px; }
+        
+        /* Kill UI */
+        .kill-btn { background-color: #dc3545; box-shadow: 0 4px #8b1e2a; margin-top: 20px; }
+        .loc-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
+        .loc-btn { background: #444; border: 1px solid #666; padding: 15px; border-radius: 8px; font-weight: bold; }
+        
+        /* Death Screens */
+        #deathOverlay, #timerOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #8b1e2a; z-index: 9999; flex-direction: column; justify-content: center; align-items: center; padding: 30px; text-align: center; }
+        #deathOverlay.active, #timerOverlay.active { display: flex; }
+        .timer-text { font-size: 5rem; font-weight: bold; margin: 20px 0; }
     </style>
 </head>
 <body>
 
+<div id="deathOverlay">
+    <h1 style="font-size: 2.5rem;">YOU HAVE DIED</h1>
+    <p id="deathLocText" style="font-size: 1.2rem; margin: 20px 0;"></p>
+    <button onclick="startDeathTimer()" style="background: white; color: #8b1e2a; width: 200px;">UNDERSTOOD</button>
+</div>
+
+<div id="timerOverlay">
+    <h2 id="timerStatusText">Get to your location...</h2>
+    <div id="countdown" class="timer-text">10</div>
+    <p id="finalDeathNote" style="display:none; font-size: 1.5rem; font-weight: bold;">STOP WHERE YOU ARE, YOUR DEAD</p>
+</div>
+
 <div id="screenWelcome" class="screen active">
   <div class="box">
     <h2>Among Us IRL</h2>
-    <input type="text" id="username" placeholder="Enter Name">
+    <input type="text" id="username" placeholder="Enter Name" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px;">
     <button onclick="chooseMode('create')">CREATE GAME</button>
     <button onclick="chooseMode('join')">JOIN GAME</button>
   </div>
@@ -55,11 +60,9 @@
 <div id="screenCreate" class="screen">
   <div class="box">
     <h2>Host Settings</h2>
-    <p>Max Players:</p>
-    <input type="number" id="maxPlayers" value="2" min="1" max="25">
+    <input type="number" id="maxPlayers" value="2" min="1" max="25" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px;">
     <h3>Select Tasks (1-25)</h3>
     <div id="taskContainer"></div>
-    <h3>Selected List</h3>
     <div id="selectedTasks"></div>
     <button onclick="startGame()">OPEN LOBBY</button>
   </div>
@@ -68,34 +71,39 @@
 <div id="screenJoin" class="screen">
   <div class="box">
     <h2>Join Mission</h2>
-    <input type="text" id="joinCode" placeholder="6-Digit Code" inputmode="numeric">
+    <input type="text" id="joinCode" placeholder="6-Digit Code" inputmode="numeric" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px;">
     <button onclick="joinGame()">JOIN</button>
-    <p id="joinMessage" style="color:#ff4d4d;"></p>
   </div>
 </div>
 
 <div id="screenLobby" class="screen">
   <div class="box">
     <h2>Lobby</h2>
-    <p>Game Code:</p>
-    <h1 id="lobbyCodeDisplay" style="color:#28a745; letter-spacing: 5px; margin: 10px 0;">------</h1>
-    <p>Crew: <span id="currentCount">0</span> / <span id="totalNeeded">0</span></p>
-    <div id="playerList"></div>
-    
-    <div id="hostControls" style="display:none; margin-top: 20px;">
-      <button onclick="manualStart()" style="background: #dc3545; box-shadow: 0 4px #8b1e2a;">START GAME</button>
-    </div>
-    <div id="guestWaitNote" style="display:none;">
-      <p style="font-style: italic; color: #888;">Waiting for host to begin...</p>
+    <h1 id="lobbyCodeDisplay" style="color:#28a745; letter-spacing: 5px;">------</h1>
+    <div id="playerList" style="margin-bottom: 20px; font-weight: bold;"></div>
+    <div id="hostControls" style="display:none;">
+      <button onclick="manualStart()" style="background: #dc3545;">START GAME</button>
     </div>
   </div>
+</div>
+
+<div id="screenKillPicker" class="screen">
+    <div class="box">
+        <h2 id="pickerTitle">Decoy Location</h2>
+        <div id="pickerOptions" class="loc-grid"></div>
+        <button onclick="showScreen('screenTasks')" style="background: #555;">CANCEL</button>
+    </div>
 </div>
 
 <div id="screenTasks" class="screen">
   <div class="box">
     <h3 style="margin:0;">YOUR ROLE:</h3>
     <h1 id="roleDisplay" style="margin: 5px 0 20px 0;">...</h1>
-    <hr style="border: 0; border-top: 1px solid #444;">
+    
+    <div id="imposterTools" style="display:none;">
+        <button class="kill-btn" onclick="openLocationPicker()">DECOY LOCATION</button>
+    </div>
+
     <h3>ACTIVE TASKS</h3>
     <div id="assignedTasks"></div>
   </div>
@@ -128,24 +136,19 @@ const db = firebase.database();
 let username = null;
 let currentGameCode = null;
 let isHost = false;
+let myRole = 'Crewmate';
+let tempLoc = "";
 
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  window.scrollTo(0,0);
 }
 
 function chooseMode(mode){
   username = document.getElementById('username').value.trim();
   if(!username){ alert("Enter your name!"); return; }
-  if(mode==='create'){ 
-    isHost = true;
-    showScreen('screenCreate');
-    generateTaskBoxes();
-  } else { 
-    isHost = false;
-    showScreen('screenJoin'); 
-  }
+  if(mode==='create'){ isHost = true; showScreen('screenCreate'); generateTaskBoxes(); }
+  else { isHost = false; showScreen('screenJoin'); }
 }
 
 function generateTaskBoxes(){
@@ -154,8 +157,7 @@ function generateTaskBoxes(){
   container.innerHTML=''; selected.innerHTML='';
   for(let i=1;i<=25;i++){
     const t = document.createElement('div');
-    t.className='taskBox';
-    t.innerText=i;
+    t.className='taskBox'; t.innerText=i;
     t.onclick = ()=>{
       if(t.classList.contains('selected')){
         t.classList.remove('selected');
@@ -163,9 +165,7 @@ function generateTaskBoxes(){
       } else {
         t.classList.add('selected');
         const b = document.createElement('div');
-        b.className = 'taskBox selected';
-        b.innerText = i;
-        b.dataset.task = i;
+        b.className = 'taskBox selected'; b.innerText = i; b.dataset.task = i;
         selected.appendChild(b);
       }
     };
@@ -176,24 +176,16 @@ function generateTaskBoxes(){
 function startGame(){
   const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
   const tasks = [...document.getElementById('selectedTasks').children].map(t=>t.innerText);
-  if(!maxPlayers || tasks.length===0){ alert("Set players and pick tasks!"); return; }
-
   currentGameCode = Math.floor(100000 + Math.random()*900000).toString();
   db.ref('games/'+currentGameCode).set({
-    creator: username,
-    maxPlayers,
-    tasks,
-    players: {[username]: true},
-    status: 'lobby'
+    creator: username, maxPlayers, tasks, players: {[username]: true}, status: 'lobby'
   });
-
   listenLobby(currentGameCode);
   showScreen('screenLobby');
 }
 
 function joinGame(){
   const code = document.getElementById('joinCode').value.trim();
-  if(!code){ alert("Enter code!"); return; }
   db.ref('games/'+code).once('value', s => {
     if(!s.exists()){ alert("Game not found!"); return; }
     currentGameCode = code;
@@ -208,20 +200,22 @@ function listenLobby(code){
   db.ref('games/'+code).on('value', snapshot => {
     const game = snapshot.val();
     if(!game) return;
-
-    const players = Object.keys(game.players);
-    document.getElementById('currentCount').innerText = players.length;
-    document.getElementById('totalNeeded').innerText = game.maxPlayers;
-    document.getElementById('playerList').innerText = players.join(', ');
-
-    if(isHost) {
-      document.getElementById('hostControls').style.display = 'block';
-    } else {
-      document.getElementById('guestWaitNote').style.display = 'block';
-    }
+    document.getElementById('playerList').innerText = Object.keys(game.players).join(', ');
+    if(isHost) document.getElementById('hostControls').style.display = 'block';
 
     if(game.status === 'started' && game.assignments && game.roles){
-      displayTasks(game.assignments[username], game.roles[username]);
+      myRole = game.roles[username];
+      displayTasks(game.assignments[username], myRole);
+      
+      // Listen for personal death signal
+      if(myRole === 'Crewmate' && game.deadPlayers && game.deadPlayers[username]) {
+          const deathData = game.deadPlayers[username];
+          if(!deathData.acknowledged) {
+              document.getElementById('deathLocText').innerText = "Please report to: " + deathData.location;
+              if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
+              document.getElementById('deathOverlay').classList.add('active');
+          }
+      }
     }
   });
 }
@@ -231,41 +225,30 @@ function manualStart(){
     const game = snapshot.val();
     const players = Object.keys(game.players);
     const tasks = [...game.tasks];
-    
     tasks.sort(()=>Math.random()-0.5);
     const assignments = {};
     players.forEach(p=>assignments[p]=[]);
-    tasks.forEach((task,index)=>{
-      const player = players[index % players.length];
-      assignments[player].push(task);
-    });
-
+    tasks.forEach((task,index)=>{ assignments[players[index % players.length]].push(task); });
     const impIndex = Math.floor(Math.random()*players.length);
     const roles = {};
     players.forEach((p,i)=> roles[p] = (i===impIndex ? 'Imposter' : 'Crewmate'));
-
-    db.ref('games/'+currentGameCode).update({
-      assignments,
-      roles,
-      status: 'started'
-    });
+    db.ref('games/'+currentGameCode).update({ assignments, roles, status: 'started' });
   });
 }
 
-function displayTasks(myTasks, myRole) {
+function displayTasks(myTasks, role) {
   const container = document.getElementById('assignedTasks');
   if(container.innerHTML !== "") return; 
-
-  const roleEl = document.getElementById('roleDisplay');
-  roleEl.innerText = myRole;
-  roleEl.style.color = (myRole === 'Imposter' ? '#ff4d4d' : '#28a745');
+  document.getElementById('roleDisplay').innerText = role;
+  document.getElementById('roleDisplay').style.color = (role === 'Imposter' ? '#ff4d4d' : '#28a745');
+  if(role === 'Imposter') document.getElementById('imposterTools').style.display = 'block';
 
   myTasks.forEach(task=>{
     const div = document.createElement('div');
     div.className='assignedRow';
     div.innerHTML = `<span class="taskLabel">Task ${task}</span> <input type="checkbox" class="checkbox">`;
     div.querySelector('input').addEventListener('change',()=>{
-      if([...container.querySelectorAll('input')].every(c=>c.checked)){
+      if(role === 'Crewmate' && [...container.querySelectorAll('input')].every(c=>c.checked)){
         showScreen('screenComplete');
       }
     });
@@ -273,7 +256,70 @@ function displayTasks(myTasks, myRole) {
   });
   showScreen('screenTasks');
 }
-</script>
 
+/* IMPOSTER KILL LOGIC */
+function openLocationPicker() {
+    tempLoc = "";
+    document.getElementById('pickerTitle').innerText = "Decoy Location";
+    const options = ["Beach", "Palm", "Pete", "Epestein", "Stay"];
+    const container = document.getElementById('pickerOptions');
+    container.innerHTML = "";
+    options.forEach(loc => {
+        const btn = document.createElement('button');
+        btn.className = "loc-btn";
+        btn.innerText = loc;
+        btn.onclick = () => openSubjectPicker(loc);
+        container.appendChild(btn);
+    });
+    showScreen('screenKillPicker');
+}
+
+function openSubjectPicker(loc) {
+    tempLoc = loc;
+    document.getElementById('pickerTitle').innerText = "Who is the subject?";
+    db.ref('games/'+currentGameCode+'/players').once('value', snapshot => {
+        const players = Object.keys(snapshot.val());
+        const container = document.getElementById('pickerOptions');
+        container.innerHTML = "";
+        players.forEach(p => {
+            if(p !== username) { // Can't kill self
+                const btn = document.createElement('button');
+                btn.className = "loc-btn";
+                btn.innerText = p;
+                btn.onclick = () => executeKill(p);
+                container.appendChild(btn);
+            }
+        });
+    });
+}
+
+function executeKill(target) {
+    db.ref(`games/${currentGameCode}/deadPlayers/${target}`).set({
+        location: tempLoc,
+        acknowledged: false
+    });
+    showScreen('screenTasks');
+}
+
+/* CREWMATE DEATH LOGIC */
+function startDeathTimer() {
+    document.getElementById('deathOverlay').classList.remove('active');
+    document.getElementById('timerOverlay').classList.add('active');
+    db.ref(`games/${currentGameCode}/deadPlayers/${username}/acknowledged`).set(true);
+    
+    let count = 10;
+    const countdownEl = document.getElementById('countdown');
+    const interval = setInterval(() => {
+        count--;
+        countdownEl.innerText = count;
+        if(count <= 0) {
+            clearInterval(interval);
+            document.getElementById('timerStatusText').style.display = 'none';
+            countdownEl.style.display = 'none';
+            document.getElementById('finalDeathNote').style.display = 'block';
+        }
+    }, 1000);
+}
+</script>
 </body>
 </html>
