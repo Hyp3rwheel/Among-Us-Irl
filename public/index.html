@@ -27,7 +27,6 @@
         .loc-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
         .loc-btn { background: #444; border: 1px solid #666; padding: 15px; border-radius: 8px; font-weight: bold; }
         
-        /* Red Death Overlay */
         #deathOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #8b1e2a; z-index: 9999; flex-direction: column; justify-content: center; align-items: center; padding: 30px; text-align: center; }
         #deathOverlay.active { display: flex; }
     </style>
@@ -111,6 +110,14 @@
     <p>You finished your tasks!</p>
     <p>Stay alert.</p>
   </div>
+</div>
+
+<div id="screenVictory" class="screen">
+    <div class="box">
+      <h2 style="color: #28a745;">VICTORY</h2>
+      <h1 style="font-size: 2.5rem; margin: 20px 0;">Congrats You Have Survived!!</h1>
+      <button onclick="location.reload()">PLAY AGAIN</button>
+    </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -202,13 +209,17 @@ function listenLobby(code){
       myRole = game.roles[username];
       displayTasks(game.assignments[username], myRole);
       
-      // Personal Death Signal
+      // Check for death
       if(myRole === 'Crewmate' && game.deadPlayers && game.deadPlayers[username]) {
           if(!game.deadPlayers[username].acknowledged) {
-              const sound = document.getElementById('deathSound');
-              sound.play().catch(e => console.log("Sound ready"));
+              document.getElementById('deathSound').play().catch(e => {});
               document.getElementById('deathOverlay').classList.add('active');
           }
+      }
+
+      // Check for Victory
+      if(game.victory === true) {
+          showScreen('screenVictory');
       }
     }
   });
@@ -226,7 +237,14 @@ function manualStart(){
     const impIndex = Math.floor(Math.random()*players.length);
     const roles = {};
     players.forEach((p,i)=> roles[p] = (i===impIndex ? 'Imposter' : 'Crewmate'));
-    db.ref('games/'+currentGameCode).update({ assignments, roles, status: 'started' });
+    
+    // Track task completion status for all players
+    const progress = {};
+    players.forEach(p => progress[p] = false);
+
+    db.ref('games/'+currentGameCode).update({ 
+        assignments, roles, status: 'started', taskProgress: progress, victory: false 
+    });
   });
 }
 
@@ -242,14 +260,34 @@ function displayTasks(myTasks, role) {
     div.className='assignedRow';
     div.innerHTML = `<span class="taskLabel">Task ${task}</span> <input type="checkbox" class="checkbox">`;
     div.querySelector('input').addEventListener('change',()=>{
-      // If crewmate finishes tasks, they go to clear screen. Imposter stays to keep killing.
-      if(role === 'Crewmate' && [...container.querySelectorAll('input')].every(c=>c.checked)){
+      const allChecked = [...container.querySelectorAll('input')].every(c=>c.checked);
+      if(role === 'Crewmate' && allChecked){
         showScreen('screenComplete');
+        updateGlobalProgress();
       }
     });
     container.appendChild(div);
   });
   showScreen('screenTasks');
+}
+
+function updateGlobalProgress() {
+    db.ref(`games/${currentGameCode}/taskProgress/${username}`).set(true).then(() => {
+        // Check if everyone is done
+        db.ref('games/'+currentGameCode).once('value', snapshot => {
+            const game = snapshot.val();
+            const roles = game.roles;
+            const progress = game.taskProgress;
+            
+            // A win happens if every player who is a 'Crewmate' has true in taskProgress
+            const crewmates = Object.keys(roles).filter(p => roles[p] === 'Crewmate');
+            const allCrewFinished = crewmates.every(p => progress[p] === true);
+            
+            if(allCrewFinished) {
+                db.ref(`games/${currentGameCode}`).update({ victory: true });
+            }
+        });
+    });
 }
 
 function openSubjectPicker() {
@@ -271,16 +309,13 @@ function openSubjectPicker() {
 }
 
 function executeKill(target) {
-    db.ref(`games/${currentGameCode}/deadPlayers/${target}`).set({
-        acknowledged: false
-    });
+    db.ref(`games/${currentGameCode}/deadPlayers/${target}`).set({ acknowledged: false });
     showScreen('screenTasks');
 }
 
 function acknowledgeDeath() {
     document.getElementById('deathOverlay').classList.remove('active');
     db.ref(`games/${currentGameCode}/deadPlayers/${username}/acknowledged`).set(true);
-    // Crewmate stays on screenTasks so they can continue working as a ghost.
 }
 </script>
 </body>
