@@ -23,18 +23,18 @@
         button { padding: 15px 20px; font-size: 16px; border-radius: 10px; border: none; background-color: #28a745; color: white; cursor: pointer; width: 100%; font-weight: bold; margin-top: 10px; box-shadow: 0 4px #1a632a; transition: 0.1s; }
         button:active { transform: translateY(2px); box-shadow: 0 2px #1a632a; }
         
-        /* Kill UI */
         .kill-btn { background-color: #dc3545; box-shadow: 0 4px #8b1e2a; margin-top: 20px; }
         .loc-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
         .loc-btn { background: #444; border: 1px solid #666; padding: 15px; border-radius: 8px; font-weight: bold; }
         
-        /* Death Screens */
         #deathOverlay, #timerOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #8b1e2a; z-index: 9999; flex-direction: column; justify-content: center; align-items: center; padding: 30px; text-align: center; }
         #deathOverlay.active, #timerOverlay.active { display: flex; }
         .timer-text { font-size: 5rem; font-weight: bold; margin: 20px 0; }
     </style>
 </head>
 <body>
+
+<audio id="deathSound" src="https://actions.google.com/sounds/v1/alerts/high_frequenzy_beep.ogg" preload="auto"></audio>
 
 <div id="deathOverlay">
     <h1 style="font-size: 2.5rem;">YOU HAVE DIED</h1>
@@ -51,7 +51,7 @@
 <div id="screenWelcome" class="screen active">
   <div class="box">
     <h2>Among Us IRL</h2>
-    <input type="text" id="username" placeholder="Enter Name" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px;">
+    <input type="text" id="username" placeholder="Enter Name" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px; background: #000; color: #fff;">
     <button onclick="chooseMode('create')">CREATE GAME</button>
     <button onclick="chooseMode('join')">JOIN GAME</button>
   </div>
@@ -60,7 +60,7 @@
 <div id="screenCreate" class="screen">
   <div class="box">
     <h2>Host Settings</h2>
-    <input type="number" id="maxPlayers" value="2" min="1" max="25" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px;">
+    <input type="number" id="maxPlayers" value="2" min="1" max="25" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px; background: #000; color: #fff;">
     <h3>Select Tasks (1-25)</h3>
     <div id="taskContainer"></div>
     <div id="selectedTasks"></div>
@@ -71,7 +71,7 @@
 <div id="screenJoin" class="screen">
   <div class="box">
     <h2>Join Mission</h2>
-    <input type="text" id="joinCode" placeholder="6-Digit Code" inputmode="numeric" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px;">
+    <input type="text" id="joinCode" placeholder="6-Digit Code" inputmode="numeric" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px; background: #000; color: #fff;">
     <button onclick="joinGame()">JOIN</button>
   </div>
 </div>
@@ -99,11 +99,9 @@
   <div class="box">
     <h3 style="margin:0;">YOUR ROLE:</h3>
     <h1 id="roleDisplay" style="margin: 5px 0 20px 0;">...</h1>
-    
     <div id="imposterTools" style="display:none;">
         <button class="kill-btn" onclick="openLocationPicker()">DECOY LOCATION</button>
     </div>
-
     <h3>ACTIVE TASKS</h3>
     <div id="assignedTasks"></div>
   </div>
@@ -207,12 +205,13 @@ function listenLobby(code){
       myRole = game.roles[username];
       displayTasks(game.assignments[username], myRole);
       
-      // Listen for personal death signal
       if(myRole === 'Crewmate' && game.deadPlayers && game.deadPlayers[username]) {
           const deathData = game.deadPlayers[username];
           if(!deathData.acknowledged) {
               document.getElementById('deathLocText').innerText = "Please report to: " + deathData.location;
-              if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
+              // PLAY THE NOISE
+              const sound = document.getElementById('deathSound');
+              sound.play().catch(e => console.log("Sound failed until user interacts"));
               document.getElementById('deathOverlay').classList.add('active');
           }
       }
@@ -257,7 +256,6 @@ function displayTasks(myTasks, role) {
   showScreen('screenTasks');
 }
 
-/* IMPOSTER KILL LOGIC */
 function openLocationPicker() {
     tempLoc = "";
     document.getElementById('pickerTitle').innerText = "Decoy Location";
@@ -282,7 +280,7 @@ function openSubjectPicker(loc) {
         const container = document.getElementById('pickerOptions');
         container.innerHTML = "";
         players.forEach(p => {
-            if(p !== username) { // Can't kill self
+            if(p !== username) {
                 const btn = document.createElement('button');
                 btn.className = "loc-btn";
                 btn.innerText = p;
@@ -301,7 +299,6 @@ function executeKill(target) {
     showScreen('screenTasks');
 }
 
-/* CREWMATE DEATH LOGIC */
 function startDeathTimer() {
     document.getElementById('deathOverlay').classList.remove('active');
     document.getElementById('timerOverlay').classList.add('active');
