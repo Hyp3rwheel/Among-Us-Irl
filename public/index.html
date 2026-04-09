@@ -23,13 +23,13 @@
         button { padding: 15px 20px; font-size: 16px; border-radius: 10px; border: none; background-color: #28a745; color: white; cursor: pointer; width: 100%; font-weight: bold; margin-top: 10px; box-shadow: 0 4px #1a632a; transition: 0.1s; }
         button:active { transform: translateY(2px); box-shadow: 0 2px #1a632a; }
         
-        .kill-btn { background-color: #dc3545; box-shadow: 0 4px #8b1e2a; margin-top: 20px; }
+        .kill-btn { background-color: #dc3545; box-shadow: 0 4px #8b1e2a; margin-top: 20px; font-size: 20px; padding: 25px; }
         .loc-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
         .loc-btn { background: #444; border: 1px solid #666; padding: 15px; border-radius: 8px; font-weight: bold; }
         
-        #deathOverlay, #timerOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #8b1e2a; z-index: 9999; flex-direction: column; justify-content: center; align-items: center; padding: 30px; text-align: center; }
-        #deathOverlay.active, #timerOverlay.active { display: flex; }
-        .timer-text { font-size: 5rem; font-weight: bold; margin: 20px 0; }
+        /* Red Death Overlay */
+        #deathOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #8b1e2a; z-index: 9999; flex-direction: column; justify-content: center; align-items: center; padding: 30px; text-align: center; }
+        #deathOverlay.active { display: flex; }
     </style>
 </head>
 <body>
@@ -37,21 +37,17 @@
 <audio id="deathSound" src="https://actions.google.com/sounds/v1/alerts/high_frequenzy_beep.ogg" preload="auto"></audio>
 
 <div id="deathOverlay">
-    <h1 style="font-size: 2.5rem;">YOU HAVE DIED</h1>
-    <p id="deathLocText" style="font-size: 1.2rem; margin: 20px 0;"></p>
-    <button onclick="startDeathTimer()" style="background: white; color: #8b1e2a; width: 200px;">UNDERSTOOD</button>
-</div>
-
-<div id="timerOverlay">
-    <h2 id="timerStatusText">Get to your location...</h2>
-    <div id="countdown" class="timer-text">10</div>
-    <p id="finalDeathNote" style="display:none; font-size: 1.5rem; font-weight: bold;">STOP WHERE YOU ARE, YOUR DEAD</p>
+    <h1 style="font-size: 2.5rem; margin-bottom: 20px;">ELIMINATED</h1>
+    <p style="font-size: 1.3rem; line-height: 1.5; margin-bottom: 30px;">
+        You have been killed. After you are reported or after a meeting, you will be able to continue and finish the rest of your tasks. The team still depends on you!
+    </p>
+    <button onclick="acknowledgeDeath()" style="background: white; color: #8b1e2a; width: 220px; font-size: 18px;">UNDERSTOOD</button>
 </div>
 
 <div id="screenWelcome" class="screen active">
   <div class="box">
     <h2>Among Us IRL</h2>
-    <input type="text" id="username" placeholder="Enter Name" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px; background: #000; color: #fff;">
+    <input type="text" id="username" placeholder="Enter Name" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px; background: #000; color: #fff; border: 1px solid #444;">
     <button onclick="chooseMode('create')">CREATE GAME</button>
     <button onclick="chooseMode('join')">JOIN GAME</button>
   </div>
@@ -60,7 +56,7 @@
 <div id="screenCreate" class="screen">
   <div class="box">
     <h2>Host Settings</h2>
-    <input type="number" id="maxPlayers" value="2" min="1" max="25" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px; background: #000; color: #fff;">
+    <input type="number" id="maxPlayers" value="2" min="1" max="25" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px; background: #000; color: #fff; border: 1px solid #444;">
     <h3>Select Tasks (1-25)</h3>
     <div id="taskContainer"></div>
     <div id="selectedTasks"></div>
@@ -71,7 +67,7 @@
 <div id="screenJoin" class="screen">
   <div class="box">
     <h2>Join Mission</h2>
-    <input type="text" id="joinCode" placeholder="6-Digit Code" inputmode="numeric" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px; background: #000; color: #fff;">
+    <input type="text" id="joinCode" placeholder="6-Digit Code" inputmode="numeric" style="padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px; background: #000; color: #fff; border: 1px solid #444;">
     <button onclick="joinGame()">JOIN</button>
   </div>
 </div>
@@ -80,16 +76,16 @@
   <div class="box">
     <h2>Lobby</h2>
     <h1 id="lobbyCodeDisplay" style="color:#28a745; letter-spacing: 5px;">------</h1>
-    <div id="playerList" style="margin-bottom: 20px; font-weight: bold;"></div>
+    <div id="playerList" style="margin: 20px 0; font-weight: bold; color: #28a745;"></div>
     <div id="hostControls" style="display:none;">
-      <button onclick="manualStart()" style="background: #dc3545;">START GAME</button>
+      <button onclick="manualStart()" style="background: #dc3545; box-shadow: 0 4px #8b1e2a;">START GAME</button>
     </div>
   </div>
 </div>
 
 <div id="screenKillPicker" class="screen">
     <div class="box">
-        <h2 id="pickerTitle">Decoy Location</h2>
+        <h2>Eliminate Subject</h2>
         <div id="pickerOptions" class="loc-grid"></div>
         <button onclick="showScreen('screenTasks')" style="background: #555;">CANCEL</button>
     </div>
@@ -99,9 +95,11 @@
   <div class="box">
     <h3 style="margin:0;">YOUR ROLE:</h3>
     <h1 id="roleDisplay" style="margin: 5px 0 20px 0;">...</h1>
+    
     <div id="imposterTools" style="display:none;">
-        <button class="kill-btn" onclick="openLocationPicker()">DECOY LOCATION</button>
+        <button class="kill-btn" onclick="openSubjectPicker()">KILL</button>
     </div>
+
     <h3>ACTIVE TASKS</h3>
     <div id="assignedTasks"></div>
   </div>
@@ -111,7 +109,7 @@
   <div class="box">
     <h2 style="color: gold;">MISSION CLEAR</h2>
     <p>You finished your tasks!</p>
-    <p>Watch your back.</p>
+    <p>Stay alert.</p>
   </div>
 </div>
 
@@ -135,7 +133,6 @@ let username = null;
 let currentGameCode = null;
 let isHost = false;
 let myRole = 'Crewmate';
-let tempLoc = "";
 
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -205,13 +202,11 @@ function listenLobby(code){
       myRole = game.roles[username];
       displayTasks(game.assignments[username], myRole);
       
+      // Personal Death Signal
       if(myRole === 'Crewmate' && game.deadPlayers && game.deadPlayers[username]) {
-          const deathData = game.deadPlayers[username];
-          if(!deathData.acknowledged) {
-              document.getElementById('deathLocText').innerText = "Please report to: " + deathData.location;
-              // PLAY THE NOISE
+          if(!game.deadPlayers[username].acknowledged) {
               const sound = document.getElementById('deathSound');
-              sound.play().catch(e => console.log("Sound failed until user interacts"));
+              sound.play().catch(e => console.log("Sound ready"));
               document.getElementById('deathOverlay').classList.add('active');
           }
       }
@@ -247,6 +242,7 @@ function displayTasks(myTasks, role) {
     div.className='assignedRow';
     div.innerHTML = `<span class="taskLabel">Task ${task}</span> <input type="checkbox" class="checkbox">`;
     div.querySelector('input').addEventListener('change',()=>{
+      // If crewmate finishes tasks, they go to clear screen. Imposter stays to keep killing.
       if(role === 'Crewmate' && [...container.querySelectorAll('input')].every(c=>c.checked)){
         showScreen('screenComplete');
       }
@@ -256,25 +252,7 @@ function displayTasks(myTasks, role) {
   showScreen('screenTasks');
 }
 
-function openLocationPicker() {
-    tempLoc = "";
-    document.getElementById('pickerTitle').innerText = "Decoy Location";
-    const options = ["Beach", "Palm", "Pete", "Epestein", "Stay"];
-    const container = document.getElementById('pickerOptions');
-    container.innerHTML = "";
-    options.forEach(loc => {
-        const btn = document.createElement('button');
-        btn.className = "loc-btn";
-        btn.innerText = loc;
-        btn.onclick = () => openSubjectPicker(loc);
-        container.appendChild(btn);
-    });
-    showScreen('screenKillPicker');
-}
-
-function openSubjectPicker(loc) {
-    tempLoc = loc;
-    document.getElementById('pickerTitle').innerText = "Who is the subject?";
+function openSubjectPicker() {
     db.ref('games/'+currentGameCode+'/players').once('value', snapshot => {
         const players = Object.keys(snapshot.val());
         const container = document.getElementById('pickerOptions');
@@ -288,34 +266,21 @@ function openSubjectPicker(loc) {
                 container.appendChild(btn);
             }
         });
+        showScreen('screenKillPicker');
     });
 }
 
 function executeKill(target) {
     db.ref(`games/${currentGameCode}/deadPlayers/${target}`).set({
-        location: tempLoc,
         acknowledged: false
     });
     showScreen('screenTasks');
 }
 
-function startDeathTimer() {
+function acknowledgeDeath() {
     document.getElementById('deathOverlay').classList.remove('active');
-    document.getElementById('timerOverlay').classList.add('active');
     db.ref(`games/${currentGameCode}/deadPlayers/${username}/acknowledged`).set(true);
-    
-    let count = 10;
-    const countdownEl = document.getElementById('countdown');
-    const interval = setInterval(() => {
-        count--;
-        countdownEl.innerText = count;
-        if(count <= 0) {
-            clearInterval(interval);
-            document.getElementById('timerStatusText').style.display = 'none';
-            countdownEl.style.display = 'none';
-            document.getElementById('finalDeathNote').style.display = 'block';
-        }
-    }, 1000);
+    // Crewmate stays on screenTasks so they can continue working as a ghost.
 }
 </script>
 </body>
